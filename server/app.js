@@ -1,0 +1,113 @@
+import express from "express";
+import cookieParser from "cookie-parser";
+import helmet from "helmet";
+import { ZodError } from "zod";
+import { authRoutes, authenticate, accountRoutes, seedRoles } from "./auth.js";
+import { coreRoutes } from "./routes.js";
+import { reportingRoutes } from "./reporting.js";
+import { academicRoutes } from "./academic-routes.js";
+
+export async function createApp(db, options = {}) {
+  await seedRoles(db);
+  const app = express();
+  app.disable("x-powered-by");
+  app.use(
+    helmet({
+      contentSecurityPolicy: options.production
+        ? {
+            directives: {
+              defaultSrc: ["'self'"],
+              scriptSrc: ["'self'"],
+              styleSrc: ["'self'", "'unsafe-inline'"],
+              imgSrc: ["'self'", "data:"],
+              connectSrc: ["'self'"],
+              upgradeInsecureRequests: null,
+            },
+          }
+        : false,
+      strictTransportSecurity: options.production ? undefined : false,
+    }),
+  );
+  app.use(express.json({ limit: "1mb" }));
+  app.use(cookieParser());
+  app.use("/api", (req, res, next) => {
+    res.set("Cache-Control", "no-store");
+    if (!["GET", "HEAD", "OPTIONS"].includes(req.method) && req.get("origin")) {
+      const origin = new URL(req.get("origin"));
+      if (origin.host !== req.get("host"))
+        return res.status(403).json({
+          errors: [
+            {
+              code: "FORBIDDEN",
+              message: "Cross-origin requests are not allowed.",
+            },
+          ],
+        });
+    }
+    next();
+  });
+  app.use("/api/v1/auth", authRoutes(db));
+  app.use(
+    "/api/v1",
+    authenticate(db),
+    accountRoutes(db),
+    coreRoutes(db, options),
+    academicRoutes(db),
+    reportingRoutes(db),
+  );
+  app.use("/api", (req, res) =>
+    res.status(404).json({
+      errors: [{ code: "NOT_FOUND", message: "API endpoint not found." }],
+    }),
+  );
+  app.use((err, req, res, next) => {
+    if (res.headersSent) return next(err);
+    if (err instanceof ZodError)
+      return res.status(422).json({
+        errors: err.issues.map((i) => ({
+          code: "VALIDATION_ERROR",
+          field: i.path.join("."),
+          message: i.message,
+        })),
+      });
+    if (err.code === "23505")
+      return res.status(409).json({
+        errors: [
+          {
+            code: "CONFLICT",
+            message: "This record already exists. Refresh and try again.",
+          },
+        ],
+      });
+    if (["23503", "23514"].includes(err.code))
+      return res.status(422).json({
+        errors: [
+          {
+            code: "VALIDATION_ERROR",
+            message: "A linked record or value is invalid.",
+          },
+        ],
+      });
+    if (err.code === "LIMIT_FILE_SIZE")
+      return res.status(422).json({
+        errors: [
+          {
+            code: "VALIDATION_ERROR",
+            message: "Document size must not exceed 5 MB.",
+          },
+        ],
+      });
+    if (!err.status) console.error(err);
+    res.status(err.status || 500).json({
+      errors: [
+        {
+          code: err.code || "SERVER_ERROR",
+          message: err.status
+            ? err.message
+            : "An unexpected error occurred. Please try again.",
+        },
+      ],
+    });
+  });
+  return app;
+}

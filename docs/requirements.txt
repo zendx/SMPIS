@@ -1,0 +1,958 @@
+SOFTWARE REQUIREMENTS SPECIFICATION (SRS) AND APPLICATION BLUEPRINT
+School Management, Performance and Intelligence System (SMPIS)
+Version: 1.0Date: August 30, 2026Prepared For: School ManagementDocument Type: Software Requirements Specification and Application Blueprint
+1. EXECUTIVE SUMMARY
+1.1 Project Overview
+The School Management, Performance and Intelligence System (SMPIS) is an integrated digital platform designed to manage, monitor, analyse, and improve all major areas of school operations.
+The application will provide a single, centralized platform for managing:
+Student Enrolment
+Student Attendance
+Staff Attendance
+Fees Collection
+Academic Performance
+Curriculum Coverage
+Student Discipline
+Parent Satisfaction and Complaints
+Staffing
+Facilities and Assets
+The system will serve as both an operational management platform and a management intelligence system.
+Rather than maintaining separate spreadsheets, paper records, financial records, attendance registers, examination reports, and maintenance logs, the school will maintain a centralized database with role-based access.
+The system will provide real-time dashboards and alerts to enable school management to make informed decisions.
+2. BUSINESS OBJECTIVES
+The primary objectives of the system are to:
+2.1 Improve Operational Efficiency
+Reduce dependence on:
+Paper records
+Manual registers
+Multiple spreadsheets
+Disconnected applications
+Manual report preparation
+2.2 Improve Management Visibility
+Provide school leadership with real-time visibility into:
+Student population
+Revenue and outstanding fees
+Student attendance
+Staff attendance
+Academic performance
+Curriculum progress
+Discipline
+Parent satisfaction
+Staffing requirements
+Facility conditions
+2.3 Improve Financial Performance
+Enable management to:
+Monitor fees collection
+Identify outstanding balances
+Track payment trends
+Manage discounts and scholarships
+Improve collection rates
+2.4 Improve Academic Performance
+Provide tools to:
+Monitor student performance
+Identify academically at-risk students
+Monitor subject performance
+Track teacher performance indicators
+Monitor curriculum completion
+2.5 Improve Parent Experience
+Provide parents with a secure portal to:
+Monitor their children
+View attendance
+View academic results
+Check fees
+Make payments
+Submit complaints
+Receive school communications
+2.6 Support Data-Driven Decision Making
+Provide dashboards, reports, alerts, trends, and eventually predictive analytics.
+3. PROJECT SCOPE
+The SMPIS application will consist of the following major modules.
+Module
+Description
+Student Management
+Admission, enrolment and student records
+Student Attendance
+Daily attendance and absence monitoring
+Staff Attendance
+Staff punctuality and attendance
+Fees Management
+Billing, payment and outstanding balances
+Academic Management
+Assessments, examinations and report cards
+Curriculum Management
+Lesson and curriculum coverage tracking
+Student Discipline
+Behaviour and disciplinary incident management
+Parent Experience
+Complaints, satisfaction and communication
+Human Resources
+Staff records, recruitment and performance
+Facilities Management
+Assets, maintenance and facilities
+Reporting
+Operational and management reports
+Executive Intelligence
+Dashboards, KPIs and management alerts
+4. SYSTEM USERS AND ROLES
+The system shall support role-based access control.
+4.1 Super Administrator
+The Super Administrator shall have full access to the system.
+Responsibilities include:
+System configuration
+User management
+Role assignment
+School configuration
+Academic year setup
+Security management
+System monitoring
+4.2 Proprietor / Board
+The Proprietor or Board shall have access to strategic information.
+Access shall include:
+Executive dashboard
+Financial summaries
+Enrolment trends
+Academic performance
+Staff statistics
+Parent satisfaction
+Facilities status
+Strategic reports
+The Proprietor shall not necessarily have access to confidential detailed records unless specifically authorized.
+4.3 Principal
+The Principal shall have access to:
+Student information
+Attendance
+Academic performance
+Curriculum coverage
+Discipline
+Staff performance
+Parent complaints
+School reports
+4.4 Vice Principal / Academic Director
+Access shall include:
+Academic performance
+Teacher records
+Curriculum coverage
+Student attendance
+Discipline
+Academic reports
+4.5 Admissions Officer
+Access shall include:
+Applications
+Student enrolment
+Student documentation
+Admission decisions
+Class allocation
+4.6 Teachers
+Teachers shall access only assigned classes and subjects.
+Functions include:
+Mark attendance
+Enter assessment scores
+Enter examination scores
+Record curriculum coverage
+Submit discipline incidents
+View assigned students
+4.7 Finance Officer
+Access shall include:
+Fee structures
+Student invoices
+Payments
+Discounts
+Scholarships
+Outstanding balances
+Financial reports
+4.8 Human Resources Officer
+Access shall include:
+Staff records
+Staff attendance
+Leave management
+Recruitment
+Performance reviews
+Training records
+4.9 Facilities Manager
+Access shall include:
+Asset register
+Maintenance requests
+Repair schedules
+Maintenance costs
+Facility inspections
+4.10 Parent
+Parents shall access information relating only to their children.
+Access shall include:
+Student attendance
+Academic reports
+Fees
+Payments
+School communication
+Complaints
+Satisfaction surveys
+4.11 Student
+Student access may be enabled depending on age and school policy.
+Students may access:
+Academic performance
+Attendance
+Timetable
+Assignments
+Announcements
+5. FUNCTIONAL REQUIREMENTS
+MODULE 1: STUDENT ENROLMENT AND STUDENT MANAGEMENT
+5.1 Student Application
+The system shall allow prospective students to submit applications.
+The application shall capture:
+First name
+Middle name
+Last name
+Gender
+Date of birth
+Nationality
+Residential address
+Previous school
+Previous academic records
+Parent/guardian information
+Emergency contact
+Medical information
+Special requirements
+Supporting documents
+5.2 Admission Workflow
+The system shall support the following workflow:
+Application Submitted
+↓
+Application Reviewed
+↓
+Assessment/Interview
+↓
+Admission Decision
+↓
+Offer Issued
+↓
+Fees Payment
+↓
+Student Enrolment
+↓
+Class Assignment
+5.3 Student Profile
+Each student shall have a unique Student Identification Number.
+The profile shall include:
+Personal Information
+Photograph
+Full name
+Date of birth
+Gender
+Student ID
+Parent Information
+Father
+Mother
+Guardian
+Telephone numbers
+Email addresses
+Academic Information
+Class
+Programme
+Subjects
+Academic history
+Financial Information
+Total fees
+Amount paid
+Outstanding balance
+Operational Information
+Attendance
+Discipline
+Transportation
+Boarding status
+MODULE 2: STUDENT ATTENDANCE
+6.1 Attendance Recording
+The system shall allow attendance to be recorded by:
+Teacher
+QR code
+RFID
+Biometric integration
+Authorized administrator
+6.2 Attendance Status
+Students shall be classified as:
+Present
+Absent
+Late
+Excused
+Sick
+Authorized absence
+6.3 Attendance Alerts
+The system shall generate alerts when:
+A student is absent repeatedly
+A student has low attendance
+A student arrives late repeatedly
+Example:
+Alert: Student attendance has fallen below 80%.
+6.4 Attendance Reports
+Reports shall include:
+Daily attendance
+Weekly attendance
+Monthly attendance
+Class attendance
+Individual student attendance
+Chronic absenteeism report
+MODULE 3: STAFF ATTENDANCE
+7.1 Staff Check-In
+The system shall record:
+Arrival time
+Departure time
+Working hours
+Late arrival
+Early departure
+7.2 Staff Attendance Status
+Staff status shall include:
+Present
+Absent
+Late
+Leave
+Sick leave
+Official assignment
+7.3 Attendance Analytics
+The system shall calculate:
+Attendance percentage
+Number of late arrivals
+Absence frequency
+Average working hours
+MODULE 4: FEES COLLECTION AND FINANCIAL MANAGEMENT
+8.1 Fee Categories
+The system shall support:
+Tuition fees
+Boarding fees
+Transportation fees
+Examination fees
+Books
+Uniforms
+Meals
+Activities
+Other charges
+8.2 Student Billing
+The system shall generate invoices based on:
+Class
+Programme
+Boarding status
+Transportation
+Discounts
+Scholarships
+8.3 Payments
+The system shall record:
+Cash payments
+Bank transfers
+Card payments
+Online payments
+Instalment payments
+Each payment shall generate a receipt.
+8.4 Financial Dashboard
+The dashboard shall display:
+Total amount billed
+Amount collected
+Outstanding balance
+Collection percentage
+Daily collection
+Monthly collection
+8.5 Outstanding Fees Management
+The system shall:
+Identify overdue accounts
+Send payment reminders
+Generate debtor reports
+Track payment promises
+Track payment plans
+MODULE 5: ACADEMIC PERFORMANCE
+9.1 Assessment Management
+The system shall support:
+Assignments
+Tests
+Continuous assessments
+Practical assessments
+Projects
+Examinations
+9.2 Grade Entry
+Teachers shall enter scores for assigned students.
+The system shall automatically:
+Calculate totals
+Calculate averages
+Calculate grades
+Calculate GPA where applicable
+Rank students where school policy permits
+9.3 Academic Analytics
+The system shall analyse:
+Individual performance
+Class performance
+Subject performance
+Term performance
+Academic improvement
+Academic decline
+9.4 At-Risk Student Identification
+The system shall flag students who demonstrate:
+Repeated academic failure
+Significant grade decline
+Low attendance combined with poor performance
+MODULE 6: CURRICULUM COVERAGE
+10.1 Curriculum Setup
+Administrators shall define:
+Academic year
+Term
+Subject
+Class
+Curriculum topics
+Weekly teaching schedule
+10.2 Teacher Curriculum Reporting
+Teachers shall record:
+Topic planned
+Topic taught
+Date
+Lesson duration
+Completion status
+Reason for non-completion
+10.3 Curriculum Dashboard
+The system shall display:
+Planned curriculum
+Completed curriculum
+Outstanding topics
+Percentage completion
+Teacher comparison
+MODULE 7: STUDENT DISCIPLINE
+11.1 Discipline Incidents
+Staff shall record incidents including:
+Lateness
+Bullying
+Fighting
+Truancy
+Academic misconduct
+Insubordination
+Property damage
+Other behavioural incidents
+11.2 Discipline Workflow
+Incident Reported
+↓
+Incident Reviewed
+↓
+Investigation
+↓
+Parent Notification
+↓
+Decision
+↓
+Action Taken
+↓
+Follow-Up
+11.3 Discipline Actions
+Actions may include:
+Verbal warning
+Written warning
+Counselling
+Detention
+Parent meeting
+Behaviour improvement plan
+Suspension
+MODULE 8: PARENT SATISFACTION AND COMPLAINTS
+12.1 Complaint Submission
+Parents shall submit complaints through:
+Parent portal
+Mobile application
+School administration
+12.2 Complaint Categories
+Academics
+Teacher
+Fees
+Transportation
+Boarding
+Bullying
+Facilities
+Communication
+Other
+12.3 Complaint Workflow
+Submitted
+↓
+Acknowledged
+↓
+Assigned
+↓
+Investigated
+↓
+Response Provided
+↓
+Resolved
+↓
+Parent Feedback
+12.4 Satisfaction Surveys
+The system shall periodically conduct surveys covering:
+Teaching quality
+Communication
+Safety
+Facilities
+Transportation
+Value for money
+Overall satisfaction
+MODULE 9: STAFFING AND HUMAN RESOURCES
+13.1 Staff Records
+The system shall maintain:
+Personal information
+Employment history
+Position
+Department
+Qualifications
+Certifications
+Contract
+Training
+13.2 Recruitment
+The system shall support:
+Job vacancies
+Applicant records
+Interview scheduling
+Interview evaluation
+Hiring decisions
+13.3 Staff Performance
+Performance indicators may include:
+Attendance
+Punctuality
+Curriculum coverage
+Student performance
+Professional development
+13.4 Leave Management
+Staff shall submit leave requests.
+The workflow shall include:
+Request → Supervisor Review → Approval/Rejection → HR Record
+MODULE 10: FACILITIES AND ASSET MANAGEMENT
+14.1 Facility Categories
+The system shall manage:
+Classrooms
+Laboratories
+Libraries
+Dormitories
+Buses
+Sports facilities
+Offices
+Generators
+Computers
+Furniture
+14.2 Asset Records
+Each asset shall have:
+Asset ID
+Description
+Location
+Purchase date
+Purchase value
+Condition
+Responsible person
+14.3 Maintenance
+Users shall submit maintenance requests.
+Workflow:
+Issue Reported
+↓
+Assigned
+↓
+Maintenance Started
+↓
+Completed
+↓
+Cost Recorded
+↓
+Closed
+15. EXECUTIVE DASHBOARD
+The Executive Dashboard shall provide a consolidated overview of school performance.
+Key Performance Indicators
+Students
+Total enrolment
+New enrolment
+Withdrawals
+Attendance percentage
+Finance
+Total billed
+Fees collected
+Outstanding fees
+Collection percentage
+Academics
+Average academic performance
+Students at risk
+Subject performance
+Curriculum completion
+Staff
+Total staff
+Staff attendance
+Staff vacancies
+Parents
+Satisfaction score
+Open complaints
+Average complaint resolution time
+Facilities
+Facilities in good condition
+Maintenance issues
+Urgent repairs
+16. MANAGEMENT ALERT ENGINE
+The system shall provide automated alerts.
+Alert Categories
+Financial Alerts
+Student payment overdue
+Large outstanding balance
+Declining collection rate
+Academic Alerts
+Student performance decline
+High failure rate
+Subject underperformance
+Attendance Alerts
+Chronic absenteeism
+Repeated staff lateness
+Curriculum Alerts
+Curriculum behind schedule
+Discipline Alerts
+Repeated discipline incidents
+Parent Alerts
+Complaint unresolved beyond target time
+Facilities Alerts
+Urgent maintenance issue
+17. DATABASE BLUEPRINT
+The system should use a centralized relational database.
+Core Tables
+Student Tables
+Students
+Student_Parents
+Student_Addresses
+Student_Documents
+Student_Enrollment
+Student_Attendance
+Student_Discipline
+Academic Tables
+Academic_Years
+Terms
+Classes
+Subjects
+Curriculum
+Assessments
+Student_Scores
+Report_Cards
+Finance Tables
+Fee_Structures
+Student_Invoices
+Invoice_Items
+Payments
+Discounts
+Scholarships
+Staff Tables
+Staff
+Departments
+Positions
+Staff_Attendance
+Leave_Requests
+Performance_Reviews
+Facilities Tables
+Facilities
+Assets
+Maintenance_Requests
+Maintenance_History
+Parent Experience Tables
+Parent_Complaints
+Complaint_Actions
+Satisfaction_Surveys
+Survey_Responses
+18. APPLICATION ARCHITECTURE
+The recommended architecture consists of five layers.
+Layer 1: User Interfaces
+Management Web Portal
+Staff Web Portal
+Teacher Portal
+Parent Mobile Application
+Student Mobile Application
+Layer 2: Application Services
+Core services:
+Authentication
+Student Management
+Finance
+Attendance
+Academics
+HR
+Facilities
+Notifications
+Layer 3: Business Intelligence
+KPI calculations
+Reporting
+Trend analysis
+Alert engine
+Predictive analytics
+Layer 4: Database
+Centralized database containing all school records.
+Layer 5: Integrations
+Potential integrations:
+Payment gateways
+Banks
+SMS providers
+Email providers
+WhatsApp
+Biometric devices
+Accounting software
+19. RECOMMENDED TECHNOLOGY ARCHITECTURE
+Front End
+Recommended:
+React for web application
+React Native or Flutter for mobile application
+Back End
+Recommended options:
+Node.js
+Python/Django
+.NET
+A modular API architecture is recommended.
+Database
+Recommended:
+PostgreSQL
+Additional technologies may include:
+Redis for caching
+Object storage for documents
+Analytics database for reporting at scale
+Hosting
+The system should be cloud-hosted.
+Recommended infrastructure should include:
+Application server
+Database server
+Secure document storage
+Automated backups
+Monitoring
+20. SECURITY REQUIREMENTS
+The application shall implement:
+Authentication
+Username and password
+Password reset
+Multi-factor authentication for administrators
+Authorization
+Role-based access control.
+Users shall only access data relevant to their role.
+Data Security
+Encryption in transit
+Encryption of sensitive information
+Secure backups
+Audit logs
+Audit Trail
+The system shall record:
+User
+Action
+Date
+Time
+Previous value
+New value
+21. NON-FUNCTIONAL REQUIREMENTS
+Performance
+The application should provide normal responses within approximately 2–3 seconds under expected load.
+Availability
+Target availability:
+99.5% or higher
+Scalability
+The system shall support growth from:
+Hundreds of students
+to:
+Thousands of students
+Multiple campuses
+Multiple schools
+Backup
+Automatic backups shall be performed regularly.
+Mobile Responsiveness
+All web interfaces shall function on:
+Desktop
+Tablet
+Mobile devices
+22. REPORTING REQUIREMENTS
+The system shall generate reports in:
+PDF
+Excel
+CSV
+Key Reports
+Student Reports
+Enrolment
+Attendance
+Academic performance
+Discipline
+Financial Reports
+Fees billed
+Payments
+Outstanding balances
+Collection performance
+Academic Reports
+Student report cards
+Class performance
+Subject performance
+Teacher performance indicators
+HR Reports
+Staff attendance
+Leave
+Vacancies
+Performance
+Facilities Reports
+Asset register
+Maintenance
+Repair costs
+23. USER INTERFACE BLUEPRINT
+MAIN NAVIGATION
+The Management Portal should contain:
+Dashboard
+Students
+Attendance
+Finance
+Academics
+Curriculum
+Discipline
+Parents
+Staff
+Facilities
+Reports
+Administration
+24. DASHBOARD SCREEN BLUEPRINT
+Header
+School logo
+Academic year
+Term
+Notifications
+User profile
+KPI CARDS
+Row 1:
+Total Students
+Attendance Rate
+Fees Collected
+Outstanding Fees
+Row 2:
+Academic Performance
+Curriculum Coverage
+Parent Satisfaction
+Open Complaints
+Row 3:
+Staff Attendance
+Discipline Incidents
+Staff Vacancies
+Maintenance Issues
+CHARTS
+The dashboard should display:
+Student enrolment trend
+Fees collection trend
+Attendance trend
+Academic performance trend
+Curriculum coverage by department
+25. PARENT MOBILE APPLICATION BLUEPRINT
+Home Screen
+The Parent App should display:
+Child photograph
+Attendance summary
+Academic summary
+Outstanding fees
+Recent announcements
+Main Menu
+My Children
+Attendance
+Academic Results
+Fees
+Payments
+Complaints
+Messages
+Announcements
+Satisfaction Survey
+26. DEVELOPMENT ROADMAP
+PHASE 1: FOUNDATION AND CORE OPERATIONS
+Duration: Approximately 3–4 Months
+Modules:
+User Management
+Student Enrolment
+Student Profiles
+Student Attendance
+Staff Attendance
+Fees Collection
+Basic Reporting
+Executive Dashboard
+PHASE 2: ACADEMIC MANAGEMENT
+Duration: Approximately 2–3 Months
+Modules:
+Academic Performance
+Assessments
+Examinations
+Report Cards
+Curriculum Coverage
+Academic Analytics
+PHASE 3: QUALITY AND EXPERIENCE
+Duration: Approximately 2 Months
+Modules:
+Student Discipline
+Parent Complaints
+Parent Satisfaction
+Staff Performance
+Facilities Management
+PHASE 4: ADVANCED INTELLIGENCE
+Duration: Approximately 2–3 Months
+Modules:
+Predictive Analytics
+Student Risk Analysis
+Revenue Forecasting
+Parent Retention Analysis
+Advanced Management Intelligence
+27. PROJECT TEAM REQUIREMENTS
+Recommended development team:
+Role
+Number
+Product Owner
+1
+Project Manager
+1
+Business Analyst
+1
+UI/UX Designer
+1
+Front-End Developer
+1–2
+Back-End Developer
+2
+Mobile Developer
+1–2
+Database Engineer
+1
+QA Engineer
+1–2
+DevOps Engineer
+1
+Some roles may be combined depending on the development company.
+28. FUTURE EXPANSION MODULES
+The following modules may be introduced later.
+School Transportation
+Bus routes
+Student allocation
+Driver records
+GPS tracking
+Transportation fees
+Boarding Management
+Hostel allocation
+Room management
+Meal management
+Boarding attendance
+Library Management
+Book inventory
+Borrowing
+Returns
+Fines
+Inventory Management
+School supplies
+Procurement
+Vendors
+Learning Management System
+Online lessons
+Assignments
+Learning resources
+Student submissions
+29. SUCCESS CRITERIA
+The system shall be considered successful when it achieves the following:
+Centralized student information.
+Accurate real-time attendance monitoring.
+Improved fees collection visibility.
+Faster academic reporting.
+Improved curriculum monitoring.
+Better staff accountability.
+Faster parent complaint resolution.
+Improved management decision-making.
+Reduced dependence on spreadsheets and paper records.
+A single executive view of overall school performance.
+30. STRATEGIC VISION
+The long-term vision is to develop the application beyond a traditional School Management System.
+The SMPIS should become a:
+SCHOOL PERFORMANCE AND MANAGEMENT INTELLIGENCE PLATFORM
+The system should answer important management questions such as:
+Are student numbers growing?
+Are parents satisfied?
+Are students attending school?
+Are fees being collected efficiently?
+Which students require academic intervention?
+Which subjects are underperforming?
+Are teachers completing the curriculum?
+Are staff meeting expectations?
+Which facilities require investment?
+Which operational issues require immediate management attention?
+The ultimate objective is to give school leadership a real-time, data-driven view of the entire institution and enable proactive intervention before problems become major operational, financial, academic, or reputational risks.
+END OF SOFTWARE REQUIREMENTS SPECIFICATION
+Version: 1.0Status: Initial Development BlueprintRecommended Next Document: Detailed Product Requirements Document (PRD), Database Schema, User Stories, and Screen-Level Wireframes
