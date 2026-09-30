@@ -47,3 +47,5 @@ This extends the existing React + Node.js application following the user's instr
 ## Evidence
 
 `tests/academics.test.js` adds nine integration groups to the existing sixteen. `tests/academic-browser.mjs` exercises the real Chrome workflow with an isolated database and writes desktop/mobile screenshots to `test-results/`. No test records are inserted into the actual school database. Run the commands listed in [README.md](../README.md) to repeat verification.
+
+Verified on September 30, 2026: all 25 integration tests passed; both the core and academic Chrome workflows passed; the production build passed. Desktop analytics/report screens and the mobile results screen were visually reviewed. The existing local database was backed up before restarting the application.

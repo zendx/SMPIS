@@ -47,6 +47,7 @@ export async function openDatabase({
   await db.exec(
     await readFile(new URL("./academic-schema.sql", import.meta.url), "utf8"),
   );
+  await db.exec(await readFile(new URL("./operations-schema.sql", import.meta.url), "utf8"));
   return db;
 }
 export async function rows(db, sql, args = []) {

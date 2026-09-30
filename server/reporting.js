@@ -107,6 +107,9 @@ export function reportingRoutes(db) {
     if (permitted(req.user, "attendance.read") && req.user.role !== "TEACHER")
       cats.push("ATTENDANCE");
     if (permitted(req.user, "finance.read")) cats.push("FINANCE");
+    if (permitted(req.user, "discipline.manage")) cats.push("DISCIPLINE");
+    if (permitted(req.user, "complaints.manage")) cats.push("PARENT");
+    if (permitted(req.user, "facilities.manage")) cats.push("FACILITIES");
     res.json({
       data: await rows(
         db,
@@ -123,6 +126,7 @@ export function reportingRoutes(db) {
       id.parse(req.params.id),
     );
     if (
+      (['DISCIPLINE','PARENT','FACILITIES'].includes(alert.category) && !permitted(req.user, {DISCIPLINE:'discipline.manage',PARENT:'complaints.manage',FACILITIES:'facilities.manage'}[alert.category])) ||
       (alert.category === "FINANCE" && !permitted(req.user, "finance.read")) ||
       (alert.category === "ATTENDANCE" &&
         (!permitted(req.user, "attendance.read") ||

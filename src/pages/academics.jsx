@@ -581,7 +581,10 @@ function AnalyticsTab({ term, setup, can, notify }) {
                   setFilters({ ...filters, [key]: e.target.value })
                 }
               >
-                <option value="">All {label.toLowerCase()}s</option>
+                <option value="">
+                  All{" "}
+                  {label === "Class" ? "classes" : `${label.toLowerCase()}s`}
+                </option>
                 {options.map((o) => (
                   <option key={o.value} value={o.value}>
                     {o.label}

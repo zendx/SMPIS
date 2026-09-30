@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useData } from "../hooks";
 import { patch } from "../api";
+import {OperationsMetrics} from './operations';
 import {
   PageHead,
   Button,
@@ -121,6 +122,7 @@ export function Dashboard({ user, config, term, can, money, go, notify }) {
           </>
         )}
       </div>
+      <OperationsMetrics can={can} go={go}/>
       {academics.data && (
         <div className="metrics-grid">
           <Metric

@@ -111,6 +111,15 @@ export const ROLE_PERMISSIONS = {
   ],
   STUDENT: ["reports.academic.own"],
 };
+for (const [role, permissions] of Object.entries(ROLE_PERMISSIONS)) {
+  if (!["PROPRIETOR", "PARENT", "STUDENT"].includes(role)) permissions.push("operations.staff");
+  if (["PRINCIPAL", "VICE_PRINCIPAL"].includes(role)) permissions.push("discipline.manage", "complaints.manage", "operations.summary");
+  if (role === "TEACHER") permissions.push("discipline.report");
+  if (["PRINCIPAL", "HR_OFFICER"].includes(role)) permissions.push("hr.manage");
+  if (["PRINCIPAL", "FACILITIES_MANAGER"].includes(role)) permissions.push("facilities.manage");
+  if (role === "PARENT") permissions.push("experience.own");
+  if (["PRINCIPAL", "PROPRIETOR"].includes(role)) permissions.push("intelligence.read", "operations.summary");
+}
 export const permitted = (u, p) =>
   u.permissions.includes("*") || u.permissions.includes(p);
 export function fail(status, message, code = "VALIDATION_ERROR") {

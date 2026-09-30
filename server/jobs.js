@@ -2,9 +2,11 @@ import nodemailer from "nodemailer";
 import { rows } from "./db.js";
 import { refreshAlerts } from "./services.js";
 import { localClock } from "./security.js";
+import { refreshOperationAlerts } from "./operations-service.js";
 export async function runJobs(db) {
   for (const school of await rows(db, "SELECT * FROM schools")) {
     await refreshAlerts(db, school.id);
+    await refreshOperationAlerts(db, school.id);
     const today = localClock(school.timezone).date;
     const reminderDays = (process.env.FEE_REMINDER_DAYS || "7,14,30")
       .split(",")

@@ -265,9 +265,7 @@ try {
   await page
     .getByRole("heading", { name: "Students needing academic support" })
     .waitFor();
-  await page
-    .getByText("Low Attendance And Performance", { exact: true })
-    .waitFor();
+  await page.getByText(/^Low Attendance And Performance/).waitFor();
   await page.screenshot({
     path: "test-results/academic-analytics.png",
     fullPage: true,

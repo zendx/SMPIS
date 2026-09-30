@@ -36,6 +36,7 @@ import {
 import "./styles.css";
 import { applicationFields } from "./pages/students";
 import { useData } from "./hooks";
+import {Quality,People,Facilities} from './pages/operations';
 
 function PublicApplication({ code }) {
   const q = useData(
@@ -362,6 +363,9 @@ function App() {
       ].some(can),
     ],
     ["administration", "Administration", Settings, true],
+    ['quality','School experience',ShieldCheck,can('operations.staff')||can('experience.own')||can('operations.summary')],
+    ['people','People & HR',Users,can('operations.staff')],
+    ['facilities','Facilities & assets',School,can('operations.staff')],
   ].filter(
     (n) =>
       n[3] && (!session?.user.mfa_setup_required || n[0] === "administration"),
@@ -458,14 +462,14 @@ function App() {
       <div className="mfa-card">
         <ShieldCheck size={36} />
         <h1>Two-step verification</h1>
-        <p>Enter the six-digit code from your authenticator app.</p>
+        <p>Enter your authenticator code or a saved recovery code.</p>
         <Form
           fields={[
             {
               name: "code",
               label: "Verification code",
               wide: true,
-              maxLength: 6,
+              maxLength: 24,
             },
           ]}
           onSubmit={async (v) => {
@@ -514,6 +518,9 @@ function App() {
       notifications: Notifications,
       academics: Academics,
       curriculum: Curriculum,
+      quality: Quality,
+      people: People,
+      facilities: Facilities,
     }[page] || Dashboard;
   return (
     <div className="app-shell">

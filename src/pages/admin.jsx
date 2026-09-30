@@ -156,7 +156,8 @@ export function Administration({
   const [tab, setTab] = useState(isAdmin ? "school" : "security"),
     [modal, setModal] = useState(null),
     [mfa, setMfa] = useState(null),
-    [enabled, setEnabled] = useState(user.mfa_enabled);
+    [enabled, setEnabled] = useState(user.mfa_enabled),
+    [recovery, setRecovery] = useState(null);
   async function save(path, v, method = post) {
     await method(path, v);
     setModal(null);
@@ -477,6 +478,8 @@ export function Administration({
               <>
                 <h3>Two-step verification is enabled</h3>
                 <p>Your authenticator code is required at sign-in.</p>
+                <Form fields={[{name:'password',label:'Current password',type:'password',wide:true}]} onSubmit={async v=>setRecovery((await post('/auth/mfa/recovery-codes',v)).codes)} submit="Generate recovery codes"/>
+                {recovery&&<div className="notice"><p>Save these codes securely. Each works once. Generating a new set invalidates all previous codes.</p>{recovery.map(code=><div key={code}><code>{code}</code></div>)}<Button secondary onClick={()=>setRecovery(null)}>I have saved my codes</Button></div>}
               </>
             ) : (
               <>

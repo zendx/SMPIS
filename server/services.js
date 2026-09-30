@@ -314,7 +314,7 @@ export async function refreshAlerts(db, schoolId) {
         message: `${i.first_name} ${i.last_name}: invoice ${i.invoice_number} is overdue.`,
       });
     await tx.query(
-      "UPDATE alerts SET status='RESOLVED',updated_at=now() WHERE school_id=$1 AND status<>'RESOLVED' AND NOT ((category='ATTENDANCE' AND entity_id=ANY($2::int[])) OR (category='FINANCE' AND entity_id=ANY($3::int[])))",
+      "UPDATE alerts SET status='RESOLVED',updated_at=now() WHERE school_id=$1 AND category IN ('ATTENDANCE','FINANCE') AND status<>'RESOLVED' AND NOT ((category='ATTENDANCE' AND entity_id=ANY($2::int[])) OR (category='FINANCE' AND entity_id=ANY($3::int[])))",
       [
         schoolId,
         candidates
