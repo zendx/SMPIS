@@ -25,7 +25,12 @@ import {
   Table,
 } from "../components";
 export function Dashboard({ user, config, term, can, money, go, notify }) {
-  const academics=useData(can('analytics.read')||can('analytics.summary')?`/academics/overview?term_id=${term}`:null,null);
+  const academics = useData(
+    can("analytics.read") || can("analytics.summary")
+      ? `/academics/overview?term_id=${term}`
+      : null,
+    null,
+  );
   const query = useData(`/dashboard/executive?term_id=${term}`, null),
     alerts = useData("/alerts");
   useEffect(() => {
@@ -116,8 +121,49 @@ export function Dashboard({ user, config, term, can, money, go, notify }) {
           </>
         )}
       </div>
-      {academics.data&&<div className="metrics-grid"><Metric label="Academic average" value={academics.data.average===null?'—':`${academics.data.average}%`} detail="Completed subject results · selected term" icon={GraduationCap} onClick={()=>go('academics')}/><Metric label="Curriculum coverage" value={academics.data.curriculum_percent===null?'—':`${academics.data.curriculum_percent}%`} detail="Completed topics · selected term" icon={CheckCircle2} onClick={()=>go('curriculum')}/><Metric label="Students at risk" value={academics.data.at_risk} detail="Open flags from finalized results" icon={AlertCircle} onClick={()=>go('academics')}/><Metric label="Topics behind schedule" value={academics.data.behind_topics} detail="Beyond the school's delay tolerance" icon={CalendarCheck} onClick={()=>go('curriculum')}/></div>}
-      {academics.error&&<p className="form-error">Academic overview: {academics.error}</p>}
+      {academics.data && (
+        <div className="metrics-grid">
+          <Metric
+            label="Academic average"
+            value={
+              academics.data.average === null
+                ? "—"
+                : `${academics.data.average}%`
+            }
+            detail="Completed subject results · selected term"
+            icon={GraduationCap}
+            onClick={() => go("academics")}
+          />
+          <Metric
+            label="Curriculum coverage"
+            value={
+              academics.data.curriculum_percent === null
+                ? "—"
+                : `${academics.data.curriculum_percent}%`
+            }
+            detail="Completed topics · selected term"
+            icon={CheckCircle2}
+            onClick={() => go("curriculum")}
+          />
+          <Metric
+            label="Students at risk"
+            value={academics.data.at_risk}
+            detail="Open flags from finalized results"
+            icon={AlertCircle}
+            onClick={() => go("academics")}
+          />
+          <Metric
+            label="Topics behind schedule"
+            value={academics.data.behind_topics}
+            detail="Beyond the school's delay tolerance"
+            icon={CalendarCheck}
+            onClick={() => go("curriculum")}
+          />
+        </div>
+      )}
+      {academics.error && (
+        <p className="form-error">Academic overview: {academics.error}</p>
+      )}
       <div className="dashboard-grid">
         <Panel
           title="Attendance over time"

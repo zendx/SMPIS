@@ -39,3 +39,11 @@ Cloud deployment, DNS, production data migration, payment gateways, email/SMS/Wh
 The user selected Phase 1 with React and Node.js. The working application is served by Node on `http://127.0.0.1:3000`; the PostgreSQL-compatible local database persists in `data/postgres`. A first-run setup creates the actual school and administrator; test records are isolated from this database. A separate PostgreSQL server adapter is included but not independently exercised here.
 
 Implemented source is in `server/` and `src/`, with runnable integration/browser tests in `tests/`. See `../README.md` for operation and `PHASE1-COVERAGE.md` for precise feature coverage and outstanding requirements. Final verification: 16 integration tests passed, Chrome desktop/mobile workflow passed, production build passed, local setup endpoint responded successfully, and the initial automatic backup completed.
+
+## Phase 2 extension
+
+The user subsequently authorized Phase 2 and approved configurable A/B/C/D/E/F thresholds of 70/60/50/45/40/0, a 50% pass mark and ranking disabled. Academics and Curriculum now extend the existing navigation, dashboards and report hub. The additional schema is applied idempotently on startup; existing core data remains in the same database.
+
+Implementation lives in `server/academic-schema.sql`, `server/academic-service.js`, `server/academic-routes.js`, `src/pages/academics.jsx` and `src/pages/curriculum.jsx`. It includes weighted assessments, school grading policy, optional credit-weighted GPA/ranks, draft/finalized/published report snapshots, parent/student publication gates, deterministic academic support flags, curriculum imports/logs/coverage and audited exports. Shared calendar-date parsing now returns consistent date strings for PGlite and PostgreSQL, including historical term checks.
+
+Nine new academic integration groups bring the suite to 25 tests. The separate academic Chrome workflow exercises management, teacher and parent journeys. See [Phase 2 coverage](PHASE2-COVERAGE.md) for requirement mapping and material limitations, including current-roster report generation. Phase 1 follow-ups, Phase 3, Phase 4 and external deployment/integrations remain outstanding; Phase 2 authorization does not imply they are complete.

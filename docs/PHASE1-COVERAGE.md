@@ -1,6 +1,6 @@
 # Phase 1 coverage and decisions
 
-The user selected Phase 1 with React and Node.js after review of both source documents. Phases 2–4 remain outside this delivery. This table distinguishes working local behavior from provider and production work.
+The user initially selected Phase 1 with React and Node.js after review of both source documents. This table records that initial delivery and its remaining follow-ups. Subsequent academic and curriculum work is covered in [PHASE2-COVERAGE.md](PHASE2-COVERAGE.md); Phase 3 and Phase 4 remain outside the implemented scope.
 
 | Source                      | Delivered local behavior                                                                                                                                                                                                      | Constraints / follow-up                                                                                                                                                               |
 | --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

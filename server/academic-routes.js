@@ -395,6 +395,7 @@ export function academicRoutes(db) {
     const result = await db.transaction(async (tx) => {
       const cs = await assignedSubject(tx, req.user, b.class_subject_id);
       await academicClass(tx, req.user, cs.class_id, { lock: true });
+      await assignedSubject(tx, req.user, b.class_subject_id);
       const term = await assertEditable(tx, req.user, cs.class_id, b.term_id);
       if (
         b.assessment_date < term.start_date ||
@@ -474,9 +475,11 @@ export function academicRoutes(db) {
     async (req, res) => {
       const aid = id.parse(req.params.id);
       await db.transaction(async (tx) => {
-        const a = await schoolRecord(tx, req.user, "assessments", aid),
-          cs = await assignedSubject(tx, req.user, a.class_subject_id);
+        let a = await schoolRecord(tx, req.user, "assessments", aid);
+        const cs = await assignedSubject(tx, req.user, a.class_subject_id);
         await academicClass(tx, req.user, cs.class_id, { lock: true });
+        a = await schoolRecord(tx, req.user, "assessments", aid);
+        await assignedSubject(tx, req.user, a.class_subject_id);
         await assertEditable(tx, req.user, cs.class_id, a.term_id);
         if (
           await one(
@@ -557,9 +560,11 @@ export function academicRoutes(db) {
       if (new Set(b.scores.map((s) => s.student_id)).size !== b.scores.length)
         fail(422, "Each student may occur only once.");
       await db.transaction(async (tx) => {
-        const a = await schoolRecord(tx, req.user, "assessments", aid),
-          cs = await assignedSubject(tx, req.user, a.class_subject_id);
+        let a = await schoolRecord(tx, req.user, "assessments", aid);
+        const cs = await assignedSubject(tx, req.user, a.class_subject_id);
         await academicClass(tx, req.user, cs.class_id, { lock: true });
+        a = await schoolRecord(tx, req.user, "assessments", aid);
+        await assignedSubject(tx, req.user, a.class_subject_id);
         await assertEditable(tx, req.user, cs.class_id, a.term_id);
         for (const score of b.scores) {
           const s = await schoolRecord(
@@ -718,8 +723,9 @@ export function academicRoutes(db) {
       const bid = id.parse(req.params.id),
         reason = text.parse(req.body.reason);
       await db.transaction(async (tx) => {
-        const b = await schoolRecord(tx, req.user, "report_batches", bid);
+        let b = await schoolRecord(tx, req.user, "report_batches", bid);
         await academicClass(tx, req.user, b.class_id, { lock: true });
+        b = await schoolRecord(tx, req.user, "report_batches", bid);
         if (b.status === "DRAFT") fail(409, "This batch is already a draft.");
         if (b.status === "PUBLISHED" && !permitted(req.user, "reports.publish"))
           fail(
@@ -1286,10 +1292,34 @@ export function academicRoutes(db) {
       }
     },
   );
-  r.get('/academics/overview',allow('analytics.read','analytics.summary'),async(req,res)=>{
-    const tid=id.parse(req.query.term_id),analysis=await academicAnalytics(db,req.user,{term_id:tid}),topics=await curriculumRows(db,req.user,tid);
-    const risk=await one(db,`SELECT count(DISTINCT f.student_id)::int AS students FROM at_risk_flags f JOIN classes c ON c.id=f.class_id WHERE f.school_id=$1 AND f.term_id=$2 AND f.status='OPEN'${req.user.role==='TEACHER'?' AND c.teacher_user_id=$3':''}`,req.user.role==='TEACHER'?[req.user.school_id,tid,req.user.id]:[req.user.school_id,tid]);
-    ok(res,{...analysis.summary,at_risk: risk.students,curriculum_percent:topics.length?round(100*topics.filter(t=>t.completion_status==='COMPLETED').length/topics.length):null,behind_topics:topics.filter(t=>t.behind).length});
-  });
+  r.get(
+    "/academics/overview",
+    allow("analytics.read", "analytics.summary"),
+    async (req, res) => {
+      const tid = id.parse(req.query.term_id),
+        analysis = await academicAnalytics(db, req.user, { term_id: tid }),
+        topics = await curriculumRows(db, req.user, tid);
+      const risk = await one(
+        db,
+        `SELECT count(DISTINCT f.student_id)::int AS students FROM at_risk_flags f JOIN classes c ON c.id=f.class_id WHERE f.school_id=$1 AND f.term_id=$2 AND f.status='OPEN'${req.user.role === "TEACHER" ? " AND c.teacher_user_id=$3" : ""}`,
+        req.user.role === "TEACHER"
+          ? [req.user.school_id, tid, req.user.id]
+          : [req.user.school_id, tid],
+      );
+      ok(res, {
+        ...analysis.summary,
+        at_risk: risk.students,
+        curriculum_percent: topics.length
+          ? round(
+              (100 *
+                topics.filter((t) => t.completion_status === "COMPLETED")
+                  .length) /
+                topics.length,
+            )
+          : null,
+        behind_topics: topics.filter((t) => t.behind).length,
+      });
+    },
+  );
   return r;
 }

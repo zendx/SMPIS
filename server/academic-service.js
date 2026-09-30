@@ -297,7 +297,9 @@ export async function evaluateRisk(tx, schoolId) {
   const history = new Map();
   const active = [];
   for (const card of cards) {
-    const previous = (history.get(card.student_id) || []).filter(c=>c.term_id!==card.term_id);
+    const previous = (history.get(card.student_id) || []).filter(
+      (c) => c.term_id !== card.term_id,
+    );
     const failures = [...previous, card].slice(-policy.repeated_failure_terms);
     const reasons = [];
     if (

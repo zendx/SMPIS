@@ -37,7 +37,9 @@ export async function openDatabase({
     };
   } else {
     if (!memory) await mkdir(dataDir, { recursive: true });
-    db = new PGlite(memory ? "memory://" : path.resolve(dataDir, "postgres"));
+    db = new PGlite(memory ? "memory://" : path.resolve(dataDir, "postgres"), {
+      parsers: { 1082: (value) => value },
+    });
   }
   await db.exec(
     await readFile(new URL("./schema.sql", import.meta.url), "utf8"),

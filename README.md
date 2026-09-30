@@ -1,6 +1,6 @@
-# SMPIS — Phase 1
+# SMPIS — Phases 1 and 2
 
-Working local implementation of the **School Management, Performance and Intelligence System**, based on the two supplied documents. Scope agreed: **Phase 1, React + Node.js**.
+Working local implementation of the **School Management, Performance and Intelligence System**, based on the two supplied documents. The user selected React + Node.js and subsequently authorized Phase 2 academics and curriculum. This is not a complete implementation of every requirement in both documents; see the phase coverage records below.
 
 ## Start locally
 
@@ -48,11 +48,17 @@ Currency defaults to NGN and timezone to Africa/Lagos in setup; change these to 
 - Role-scoped dashboards, term fee totals, class enrollment, attendance/payment trends, management alerts, notification outbox, CSV/Excel/PDF reports and export auditing.
 - Daily local database/document backups while the server is running; manual backup and safe restore tools.
 
+## Academic workflow
+
+Open **Academics → Setup** to create subjects, assign teachers to class subjects, and review grading rules. Create assessments with weights totaling 100% per subject, enter scores, review the gradebook, then generate, finalize and publish report cards. Linked parents/students can view published reports and download PDFs. Use **Curriculum** for weekly plans, CSV imports, teaching logs and coverage comparisons, and **Academics → Analytics** for performance and support flags.
+
+The approved configurable defaults are A ≥70, B ≥60, C ≥50, D ≥45, E ≥40, F <40, with a 50% pass mark and ranking disabled. GPA starts disabled. See [Phase 2 coverage and operating rules](docs/PHASE2-COVERAGE.md) for calculation, locking, publication and historical-roster limitations.
+
 ## Database and files
 
 The default database is persistent **PGlite**, a PostgreSQL build running in Node, stored in `data/postgres`. This is a local single-process setup; the server and backup command use a process lock. PGlite filesystem behavior is documented at [PGlite filesystems](https://pglite.dev/docs/filesystems).
 
-A PostgreSQL server adapter is included. Copy `.env.example` to `.env` and set `DATABASE_URL` to a dedicated empty database to use it. The app applies `server/schema.sql` on startup. PostgreSQL server integration has **not** been run against a separate server in this workspace; the automated tests run the schema and queries on PGlite. Switching databases does not migrate records automatically.
+A PostgreSQL server adapter is included. Copy `.env.example` to `.env` and set `DATABASE_URL` to a dedicated empty database to use it. The app applies `server/schema.sql` and `server/academic-schema.sql` on startup. PostgreSQL server integration has **not** been run against a separate server in this workspace; the automated tests run the schema and queries on PGlite. Switching databases does not migrate records automatically.
 
 Private uploads are stored in `data/documents`, outside the Node static directory. There are no browser-localStorage records or tokens. Sessions are HttpOnly cookies. Keep `data/`, `.env` and backups outside version control.
 
@@ -62,7 +68,7 @@ Set `SMTP_URL`, `MAIL_FROM` and `APP_URL` in `.env` to enable email delivery and
 
 Overdue reminders are queued at 7/14/30 days by default; `FEE_REMINDER_DAYS` configures these intervals. Low-attendance notifications go to the principal and assigned class teacher, deduplicated per day. Attendance percentage uses recorded days, counts Present/Late as attendance, and requires three records before raising a rolling 30-day alert. These rules need review against the school’s attendance policy.
 
-Card/bank entries record payments already received. **There is no live online payment checkout or webhook integration.** Payment gateways, SMS/WhatsApp, QR/RFID/biometrics, native mobile apps and cloud deployment require separate provider/device work. Phase 2–4 modules are not represented as completed features.
+Card/bank entries record payments already received. **There is no live online payment checkout or webhook integration.** Payment gateways, SMS/WhatsApp, QR/RFID/biometrics, native mobile apps and cloud deployment require separate provider/device work. Phase 3 and Phase 4 modules remain unimplemented, and the Phase 1 coverage record still lists outstanding requirements.
 
 ## Backups and restore
 
@@ -88,17 +94,18 @@ With `DATABASE_URL`, backup uses `pg_dump` (must be installed and on PATH) and c
 npm.cmd test
 npm.cmd run build
 npm.cmd run test:ui
+npm.cmd run test:ui:academics
 npm.cmd audit
 ```
 
-The browser test uses installed Chrome and an isolated in-memory database. It exercises setup, mandatory MFA, classes, admissions, invoices, payments, enrollment, uploads, attendance, staff check-in, export, navigation and mobile layout. Screenshots are written to `test-results/`. All 16 integration tests passed, covering access isolation, workflow gates, exact finances, document/report formats, MFA, notification deduplication and backup restoration. The production build and browser workflow also passed.
+The browser tests use installed Chrome and isolated in-memory databases. The core workflow covers setup, mandatory MFA, classes, admissions, invoices, payments, enrollment, uploads, attendance, staff check-in, export, navigation and mobile layout. The academic workflow covers subject setup, weighted scoring, curriculum CSV/logs, report finalization/publication, analytics, parent access, downloads and mobile layout. Screenshots are written to `test-results/`. The 25 integration tests cover both phases, including access isolation, calculation rules, locks, report formats, MFA and backup restoration.
 
 An initial dependency audit reported zero vulnerabilities after updating the transitive UUID dependency used by Excel export. The final audit recheck could not reach the npm advisory endpoint; run `npm.cmd audit` again when that endpoint is available. No dependencies changed between the successful audit and the failed recheck.
 
 ## Deployment boundary
 
-This delivery is a locally verified Phase 1 application, not a production hosting deployment or an availability/performance certification. Before real school data is introduced, configure HTTPS (`NODE_ENV=production` enables Secure cookies), a supported Node runtime, database/storage encryption and access controls, mail delivery, off-site backups, monitoring, recovery procedures and school-specific policies. Public application abuse controls currently use IP rate limiting; add stronger controls for public internet operation.
+This delivery is a local application covering core operations, academics and curriculum, not a production hosting deployment or an availability/performance certification. Before real school data is introduced, configure HTTPS (`NODE_ENV=production` enables Secure cookies), a supported Node runtime, database/storage encryption and access controls, mail delivery, off-site backups, monitoring, recovery procedures and school-specific policies. Public application abuse controls currently use IP rate limiting; add stronger controls for public internet operation.
 
 Sensitive domain data and authenticator secrets in the database rely on storage encryption and access controls; application-level field encryption is not implemented. Do not expose the local PGlite directory or backups. The supplied single-school UI, one primary guardian/account link per student, percentage-based concessions and fixed role templates are deliberate initial constraints. Advanced guardian relationships, custom role editing, accountant adjustments/refunds, program-specific fee rules, batch billing UI, richer attendance aggregation and production operational testing remain further work.
 
-See `docs/IMPLEMENTATION.md` and `docs/PHASE1-COVERAGE.md` for requirements mapping and design deviations.
+See [implementation record](docs/IMPLEMENTATION.md), [Phase 1 coverage](docs/PHASE1-COVERAGE.md) and [Phase 2 coverage](docs/PHASE2-COVERAGE.md) for requirements mapping, operating rules and remaining work.

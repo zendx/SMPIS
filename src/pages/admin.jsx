@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { get, post, patch } from "../api";
 import { useData } from "../hooks";
-import {AcademicExports} from './academics';
+import { AcademicExports } from "./academics";
 import {
   PageHead,
   Button,
@@ -128,8 +128,12 @@ export function Reports({ can, config, notify, term }) {
           </Panel>
         ))}
       </div>
-      {(can('analytics.read')||can('analytics.summary'))&&<AcademicExports term={term} notify={notify}/>}
-      {(can('curriculum.read')||can('curriculum.summary'))&&<AcademicExports curriculum term={term} notify={notify}/>}
+      {(can("analytics.read") || can("analytics.summary")) && (
+        <AcademicExports term={term} notify={notify} />
+      )}
+      {(can("curriculum.read") || can("curriculum.summary")) && (
+        <AcademicExports curriculum term={term} notify={notify} />
+      )}
       <p className="muted">
         Student register includes all current records. Attendance reports use
         the selected dates; finance reports use invoice due dates.
