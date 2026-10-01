@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { IntegrationReadiness } from "./intelligence";
 import {
   Plus,
   Download,
@@ -52,7 +53,54 @@ export function Reports({ can, config, notify, term }) {
       "Check-in, check-out, attendance status and hours worked.",
       FileBarChart,
     ],
-  ].filter(([key]) => can(`reports.${key}`));
+    [
+      "attendance-summary",
+      "Attendance summary",
+      "Recorded-day attendance totals and percentages by student.",
+      CalendarCheck,
+    ],
+    [
+      "chronic-absence",
+      "Chronic absence",
+      "Students below the school threshold, with at least three recorded days.",
+      CalendarCheck,
+    ],
+    [
+      "discipline",
+      "Discipline cases",
+      "Incident categories, stages and responsible staff.",
+      ShieldCheck,
+    ],
+    [
+      "complaints",
+      "Parent complaints",
+      "Complaint stages and resolution dates.",
+      Users,
+    ],
+    [
+      "maintenance",
+      "Maintenance history",
+      "Repair stages and recorded costs in minor currency units.",
+      Settings,
+    ],
+    [
+      "staff-performance",
+      "Staff performance",
+      "Recorded review scores by staff member and academic year.",
+      Users,
+    ],
+  ].filter(([key]) =>
+    can(
+      {
+        "attendance-summary": "reports.attendance",
+        "chronic-absence": "reports.attendance",
+        discipline: "discipline.manage",
+        complaints: "complaints.manage",
+        maintenance: "facilities.manage",
+        "staff-performance": "hr.manage",
+      }[key] || `reports.${key}`,
+    ),
+  );
   return (
     <>
       <PageHead
@@ -184,6 +232,7 @@ export function Administration({
               "permissions",
               "audit trail",
               "security",
+              "integrations",
             ]
           : ["security"]
         ).map((t) => (
@@ -196,6 +245,7 @@ export function Administration({
           </button>
         ))}
       </div>
+      {tab === "integrations" && <IntegrationReadiness />}
       {tab === "school" && (
         <Panel
           title="School settings"
@@ -478,8 +528,38 @@ export function Administration({
               <>
                 <h3>Two-step verification is enabled</h3>
                 <p>Your authenticator code is required at sign-in.</p>
-                <Form fields={[{name:'password',label:'Current password',type:'password',wide:true}]} onSubmit={async v=>setRecovery((await post('/auth/mfa/recovery-codes',v)).codes)} submit="Generate recovery codes"/>
-                {recovery&&<div className="notice"><p>Save these codes securely. Each works once. Generating a new set invalidates all previous codes.</p>{recovery.map(code=><div key={code}><code>{code}</code></div>)}<Button secondary onClick={()=>setRecovery(null)}>I have saved my codes</Button></div>}
+                <Form
+                  fields={[
+                    {
+                      name: "password",
+                      label: "Current password",
+                      type: "password",
+                      wide: true,
+                    },
+                  ]}
+                  onSubmit={async (v) =>
+                    setRecovery(
+                      (await post("/auth/mfa/recovery-codes", v)).codes,
+                    )
+                  }
+                  submit="Generate recovery codes"
+                />
+                {recovery && (
+                  <div className="notice">
+                    <p>
+                      Save these codes securely. Each works once. Generating a
+                      new set invalidates all previous codes.
+                    </p>
+                    {recovery.map((code) => (
+                      <div key={code}>
+                        <code>{code}</code>
+                      </div>
+                    ))}
+                    <Button secondary onClick={() => setRecovery(null)}>
+                      I have saved my codes
+                    </Button>
+                  </div>
+                )}
               </>
             ) : (
               <>

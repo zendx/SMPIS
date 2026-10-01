@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Plus,
   Wallet,
@@ -22,6 +22,43 @@ import {
   human,
 } from "../components";
 export function Finance({ can, term, config, money, notify }) {
+  const gateway = useData("/payments/config", null),
+    transactions = useData("/payments/transactions"),
+    [batchResult, setBatchResult] = useState(null),
+    [paymentStatus, setPaymentStatus] = useState("");
+  async function verifyGateway(reference) {
+    try {
+      const result = await post("/payments/paystack/verify", { reference });
+      setPaymentStatus(
+        result.status === "PAID"
+          ? "Payment verified and credited to your invoice."
+          : result.status === "TEST_CONFIRMED"
+            ? "Test payment confirmed. No real invoice balance was changed."
+            : result.status === "REVIEW"
+              ? result.review_note
+              : "Payment is awaiting confirmation. You can check again shortly.",
+      );
+      q.reload();
+      transactions.reload();
+    } catch (e) {
+      setPaymentStatus(e.message);
+    }
+  }
+  useEffect(() => {
+    const params = new URLSearchParams(location.search),
+      reference = params.get("payment_reference");
+    if (reference) {
+      verifyGateway(reference);
+      params.delete("payment_reference");
+      params.delete("reference");
+      params.delete("trxref");
+      history.replaceState(
+        null,
+        "",
+        location.pathname + (params.size ? "?" + params : "") + location.hash,
+      );
+    }
+  }, []);
   const q = useData(`/finance/invoices?term_id=${term}`),
     students = useData(can("finance.read") ? "/finance/students" : null),
     fees = useData(can("finance.read") ? "/finance/fee-structures" : null),
@@ -70,6 +107,9 @@ export function Finance({ can, term, config, money, notify }) {
       >
         {can("finance.write") && (
           <>
+            <Button secondary onClick={() => setModal({ type: "batch" })}>
+              Batch invoices
+            </Button>
             <Button secondary onClick={() => setModal({ type: "invoice" })}>
               <Plus size={17} />
               Generate invoice
@@ -85,6 +125,70 @@ export function Finance({ can, term, config, money, notify }) {
           </>
         )}
       </PageHead>
+      {paymentStatus && (
+        <div className="notice" role="status">
+          {paymentStatus}
+        </div>
+      )}
+      {gateway.data?.configured && (
+        <div className="notice">
+          Paystack{" "}
+          {gateway.data.mode === "TEST"
+            ? "test checkout is enabled. Test transactions do not credit real invoices."
+            : "online payments are available."}{" "}
+          <Button small onClick={() => setModal({ type: "online" })}>
+            Pay online
+          </Button>
+        </div>
+      )}
+      {transactions.data.length > 0 && (
+        <Panel title="Online payment tracking">
+          <Table
+            rows={transactions.data}
+            columns={[
+              { label: "Reference", key: "reference" },
+              { label: "Amount", render: (r) => money(r.amount_cents) },
+              { label: "Mode", key: "mode" },
+              { label: "Status", render: (r) => <Badge value={r.status} /> },
+              {
+                label: "Note",
+                render: (r) => <span className="wrap">{r.review_note}</span>,
+              },
+              {
+                label: "",
+                render: (r) =>
+                  !["PAID", "TEST_CONFIRMED", "REVIEW"].includes(r.status) && (
+                    <button
+                      className="text-button"
+                      onClick={() => verifyGateway(r.reference)}
+                    >
+                      Check payment
+                    </button>
+                  ),
+              },
+            ]}
+          />
+        </Panel>
+      )}
+      {batchResult && (
+        <Panel
+          title="Batch billing results"
+          action={
+            <Button small secondary onClick={() => setBatchResult(null)}>
+              Dismiss
+            </Button>
+          }
+        >
+          <Table
+            rows={batchResult}
+            columns={[
+              { label: "Student ID", key: "student_id" },
+              { label: "Invoice ID", key: "invoice_id" },
+              { label: "Issue", render: (r) => r.error || "Invoice ready" },
+            ]}
+          />
+        </Panel>
+      )}
       <div className="metrics-grid">
         <Metric
           label="Total billed"
@@ -344,10 +448,82 @@ export function Finance({ can, term, config, money, notify }) {
               concession: "Student concessions",
               plan: "Plan an installment",
               waive: "Waive invoice",
+              batch: "Generate class invoices",
+              online: "Pay school fees with Paystack",
             }[modal.type]
           }
           onClose={() => setModal(null)}
         >
+          {modal.type === "batch" && (
+            <Form
+              fields={[
+                {
+                  name: "class_id",
+                  label: "Class",
+                  options: classes.data.map((c) => ({
+                    value: c.id,
+                    label: c.name,
+                  })),
+                },
+                {
+                  name: "due_date",
+                  label: "Due date",
+                  type: "date",
+                  default: config.today,
+                },
+              ]}
+              onSubmit={async (v) => {
+                setBatchResult(
+                  await post("/finance/invoices/batch", {
+                    ...v,
+                    term_id: term,
+                  }),
+                );
+                setModal(null);
+                q.reload();
+              }}
+              submit="Generate class invoices"
+            >
+              <p className="muted">
+                Uses the selected term. Existing invoices are reused. Any
+                student-specific failures are shown for correction.
+              </p>
+            </Form>
+          )}
+          {modal.type === "online" && (
+            <Form
+              fields={[
+                {
+                  name: "invoice_id",
+                  label: "Invoice",
+                  options: invoiceOptions,
+                  wide: true,
+                },
+                {
+                  name: "amount",
+                  label: `Amount (${config.school.currency_code})`,
+                  type: "number",
+                  min: 0.01,
+                  step: 0.01,
+                  wide: true,
+                },
+              ]}
+              onSubmit={async (v) => {
+                const result = await post("/payments/paystack/initialize", v);
+                location.assign(result.authorization_url);
+              }}
+              submit={
+                gateway.data?.mode === "TEST"
+                  ? "Continue to test checkout"
+                  : "Continue to Paystack"
+              }
+            >
+              <p className="muted">
+                You will complete payment on Paystack’s secure checkout. Your
+                invoice is updated after server verification.
+              </p>
+            </Form>
+          )}
           {modal.type === "invoice" && (
             <Form
               fields={[

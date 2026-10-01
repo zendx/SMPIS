@@ -13,7 +13,8 @@ import {
 } from "lucide-react";
 import { useData } from "../hooks";
 import { patch } from "../api";
-import {OperationsMetrics} from './operations';
+import { OperationsMetrics } from "./operations";
+import {openAlert} from './alerts';
 import {
   PageHead,
   Button,
@@ -122,7 +123,7 @@ export function Dashboard({ user, config, term, can, money, go, notify }) {
           </>
         )}
       </div>
-      <OperationsMetrics can={can} go={go}/>
+      <OperationsMetrics can={can} go={go} />
       {academics.data && (
         <div className="metrics-grid">
           <Metric
@@ -197,9 +198,7 @@ export function Dashboard({ user, config, term, can, money, go, notify }) {
                     <small>{a.category}</small>
                     <button
                       className="alert-link"
-                      onClick={() =>
-                        go(a.category === "FINANCE" ? "finance" : "attendance")
-                      }
+                      onClick={() => openAlert(a,go)}
                     >
                       {a.message}
                     </button>

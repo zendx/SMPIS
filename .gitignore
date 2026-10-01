@@ -4,5 +4,6 @@ dist/
 data/
 backups/
 .env
+deploy/.env
 test-results/
 *.log

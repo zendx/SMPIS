@@ -36,7 +36,9 @@ import {
 import "./styles.css";
 import { applicationFields } from "./pages/students";
 import { useData } from "./hooks";
-import {Quality,People,Facilities} from './pages/operations';
+import { Quality, People, Facilities } from "./pages/operations";
+import { Intelligence, Platform } from "./pages/intelligence";
+import {ManagementAlerts} from './pages/alerts';
 
 function PublicApplication({ code }) {
   const q = useData(
@@ -360,12 +362,26 @@ function App() {
         "reports.attendance",
         "reports.finance",
         "reports.staff",
+        "discipline.manage",
+        "complaints.manage",
+        "facilities.manage",
+        "hr.manage",
       ].some(can),
     ],
     ["administration", "Administration", Settings, true],
-    ['quality','School experience',ShieldCheck,can('operations.staff')||can('experience.own')||can('operations.summary')],
-    ['people','People & HR',Users,can('operations.staff')],
-    ['facilities','Facilities & assets',School,can('operations.staff')],
+    ['alerts','Management alerts',Bell,['finance.read','discipline.manage','complaints.manage','facilities.manage','academics.manage'].some(can)],
+    [
+      "quality",
+      "School experience",
+      ShieldCheck,
+      can("operations.staff") ||
+        can("experience.own") ||
+        can("operations.summary"),
+    ],
+    ["people", "People & HR", Users, can("operations.staff")],
+    ["facilities", "Facilities & assets", School, can("operations.staff")],
+    ["intelligence", "Intelligence", FileBarChart, can("intelligence.read")],
+    ["platform", "Schools", School, session?.user.platform_operator],
   ].filter(
     (n) =>
       n[3] && (!session?.user.mfa_setup_required || n[0] === "administration"),
@@ -412,6 +428,16 @@ function App() {
   useEffect(() => {
     if (session && !session.mfa_required)
       reloadConfig().catch((e) => setFatal(e.message));
+  }, [session]);
+  useEffect(() => {
+    if (
+      session &&
+      !session.mfa_required &&
+      !session.user.mfa_setup_required &&
+      new URLSearchParams(location.search).has("payment_reference") &&
+      (can("finance.read") || can("finance.own"))
+    )
+      go("finance");
   }, [session]);
   useEffect(() => {
     const fn = () => setPage(location.hash.slice(1) || "dashboard");
@@ -521,6 +547,9 @@ function App() {
       quality: Quality,
       people: People,
       facilities: Facilities,
+      intelligence: Intelligence,
+      platform: Platform,
+      alerts: ManagementAlerts,
     }[page] || Dashboard;
   return (
     <div className="app-shell">
