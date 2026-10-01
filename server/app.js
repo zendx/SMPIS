@@ -13,6 +13,8 @@ import { intelligenceRoutes } from "./intelligence.js";
 export async function createApp(db, options = {}) {
   await seedRoles(db);
   const app = express();
+  const proxyHops=Number(process.env.TRUST_PROXY_HOPS||0);
+  if(Number.isInteger(proxyHops)&&proxyHops>0&&proxyHops<=3)app.set('trust proxy',proxyHops);
   app.disable("x-powered-by");
   app.use(
     helmet({
@@ -31,10 +33,21 @@ export async function createApp(db, options = {}) {
       strictTransportSecurity: options.production ? undefined : false,
     }),
   );
-  app.use(express.json({ limit: "1mb", verify: (req,res,buf)=>{if(req.originalUrl.startsWith('/api/v1/webhooks/paystack/'))req.rawBody=buf;} }));
+  app.use(
+    express.json({
+      limit: "1mb",
+      verify: (req, res, buf) => {
+        if (req.originalUrl.startsWith("/api/v1/webhooks/paystack/"))
+          req.rawBody = buf;
+      },
+    }),
+  );
   app.use(cookieParser());
-  app.post('/api/v1/webhooks/paystack/:school',paystackWebhook(db));
-  app.get('/healthz',async(req,res)=>{await db.query('SELECT 1');res.json({status:'ok'});});
+  app.post("/api/v1/webhooks/paystack/:school", paystackWebhook(db));
+  app.get("/healthz", async (req, res) => {
+    await db.query("SELECT 1");
+    res.json({ status: "ok" });
+  });
   app.use("/api", (req, res, next) => {
     res.set("Cache-Control", "no-store");
     if (!["GET", "HEAD", "OPTIONS"].includes(req.method) && req.get("origin")) {
@@ -59,7 +72,7 @@ export async function createApp(db, options = {}) {
     coreRoutes(db, options),
     academicRoutes(db),
     operationsRoutes(db),
-    paymentRoutes(db,options),
+    paymentRoutes(db, options),
     intelligenceRoutes(db),
     reportingRoutes(db),
   );

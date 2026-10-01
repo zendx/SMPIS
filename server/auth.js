@@ -178,7 +178,7 @@ export function authRoutes(db) {
         start_date: b.start_date,
         end_date: b.end_date,
       });
-      await insert(tx,'platform_operators',{user_id:user.id});
+      await insert(tx, "platform_operators", { user_id: user.id });
       const termEnd = new Date(b.start_date);
       termEnd.setUTCDate(termEnd.getUTCDate() + 100);
       await insert(tx, "terms", {
@@ -343,7 +343,15 @@ export function authenticate(db) {
 }
 export function accountRoutes(db) {
   const r = express.Router();
-  r.use('/auth/mfa',rateLimit({windowMs:15*60*1000,limit:30,standardHeaders:'draft-8',legacyHeaders:false}));
+  r.use(
+    "/auth/mfa",
+    rateLimit({
+      windowMs: 15 * 60 * 1000,
+      limit: 30,
+      standardHeaders: "draft-8",
+      legacyHeaders: false,
+    }),
+  );
   r.get("/me", (req, res) =>
     res.json({
       data: {
@@ -363,13 +371,20 @@ export function accountRoutes(db) {
   r.post("/auth/mfa/verify", async (req, res) => {
     const code = z.string().trim().max(64).parse(req.body.code);
     if (/^[a-f0-9]{24}$/.test(code)) {
-      await db.transaction(async tx => {
-        const used = await one(tx, 'DELETE FROM mfa_recovery_codes WHERE user_id=$1 AND code_hash=$2 RETURNING user_id', [req.user.id,digest(code)]);
-        if (!used) fail(422, 'Invalid or already used recovery code.');
-        await tx.query('UPDATE sessions SET mfa_verified=true WHERE token_hash=$1',[req.sessionHash]);
-        await audit(tx,req.user,'users',req.user.id,'MFA_RECOVERY_USED');
+      await db.transaction(async (tx) => {
+        const used = await one(
+          tx,
+          "DELETE FROM mfa_recovery_codes WHERE user_id=$1 AND code_hash=$2 RETURNING user_id",
+          [req.user.id, digest(code)],
+        );
+        if (!used) fail(422, "Invalid or already used recovery code.");
+        await tx.query(
+          "UPDATE sessions SET mfa_verified=true WHERE token_hash=$1",
+          [req.sessionHash],
+        );
+        await audit(tx, req.user, "users", req.user.id, "MFA_RECOVERY_USED");
       });
-      return res.json({data:{ok:true}});
+      return res.json({ data: { ok: true } });
     }
     if (
       !req.user.mfa_secret ||
@@ -397,15 +412,25 @@ export function accountRoutes(db) {
       data: { secret, uri: totp(secret, req.user.email).toString() },
     });
   });
-  r.post('/auth/mfa/recovery-codes', async (req,res) => {
-    if (!req.user.mfa_enabled || !verifyPassword(String(req.body.password || ''),req.user.password_hash)) fail(422,'Enable MFA and confirm your current password.');
-    const codes=Array.from({length:10},()=>token().slice(0,24));
-    await db.transaction(async tx=>{
-      await tx.query('DELETE FROM mfa_recovery_codes WHERE user_id=$1',[req.user.id]);
-      for(const code of codes)await insert(tx,'mfa_recovery_codes',{user_id:req.user.id,code_hash:digest(code)});
-      await audit(tx,req.user,'users',req.user.id,'MFA_RECOVERY_GENERATED');
+  r.post("/auth/mfa/recovery-codes", async (req, res) => {
+    if (
+      !req.user.mfa_enabled ||
+      !verifyPassword(String(req.body.password || ""), req.user.password_hash)
+    )
+      fail(422, "Enable MFA and confirm your current password.");
+    const codes = Array.from({ length: 10 }, () => token().slice(0, 24));
+    await db.transaction(async (tx) => {
+      await tx.query("DELETE FROM mfa_recovery_codes WHERE user_id=$1", [
+        req.user.id,
+      ]);
+      for (const code of codes)
+        await insert(tx, "mfa_recovery_codes", {
+          user_id: req.user.id,
+          code_hash: digest(code),
+        });
+      await audit(tx, req.user, "users", req.user.id, "MFA_RECOVERY_GENERATED");
     });
-    res.json({data:{codes}});
+    res.json({ data: { codes } });
   });
   r.post("/auth/mfa/enable", async (req, res) => {
     if (

@@ -17,6 +17,7 @@ import {
   refreshAlerts,
 } from "./services.js";
 import { id, date } from "./validation.js";
+import { refreshOperationAlerts } from './operations-service.js';
 
 export function reportingRoutes(db) {
   const r = express.Router();
@@ -103,6 +104,7 @@ export function reportingRoutes(db) {
     });
   });
   r.get("/alerts", async (req, res) => {
+    await refreshOperationAlerts(db,req.user.school_id);
     const cats = [];
     if (permitted(req.user, "attendance.read") && req.user.role !== "TEACHER")
       cats.push("ATTENDANCE");
@@ -110,10 +112,12 @@ export function reportingRoutes(db) {
     if (permitted(req.user, "discipline.manage")) cats.push("DISCIPLINE");
     if (permitted(req.user, "complaints.manage")) cats.push("PARENT");
     if (permitted(req.user, "facilities.manage")) cats.push("FACILITIES");
+    if (permitted(req.user, 'academics.manage')) cats.push('ACADEMIC');
+    if (permitted(req.user, 'curriculum.manage')) cats.push('CURRICULUM');
     res.json({
       data: await rows(
         db,
-        "SELECT * FROM alerts WHERE school_id=$1 AND category=ANY($2::text[]) AND status<>'RESOLVED' ORDER BY severity,updated_at DESC",
+        "SELECT * FROM alerts WHERE school_id=$1 AND category=ANY($2::text[]) AND status<>'RESOLVED' ORDER BY CASE severity WHEN 'URGENT' THEN 0 WHEN 'HIGH' THEN 1 WHEN 'NORMAL' THEN 2 ELSE 3 END,updated_at DESC",
         [req.user.school_id, cats],
       ),
     });
@@ -126,7 +130,17 @@ export function reportingRoutes(db) {
       id.parse(req.params.id),
     );
     if (
-      (['DISCIPLINE','PARENT','FACILITIES'].includes(alert.category) && !permitted(req.user, {DISCIPLINE:'discipline.manage',PARENT:'complaints.manage',FACILITIES:'facilities.manage'}[alert.category])) ||
+      (["DISCIPLINE", "PARENT", "FACILITIES",'ACADEMIC','CURRICULUM'].includes(alert.category) &&
+        !permitted(
+          req.user,
+          {
+            DISCIPLINE: "discipline.manage",
+            PARENT: "complaints.manage",
+            FACILITIES: "facilities.manage",
+            ACADEMIC:'academics.manage',
+            CURRICULUM:'curriculum.manage',
+          }[alert.category],
+        )) ||
       (alert.category === "FINANCE" && !permitted(req.user, "finance.read")) ||
       (alert.category === "ATTENDANCE" &&
         (!permitted(req.user, "attendance.read") ||
@@ -147,6 +161,12 @@ export function reportingRoutes(db) {
         attendance: "reports.attendance",
         finance: "reports.finance",
         staff: "reports.staff",
+        "attendance-summary": "reports.attendance",
+        "chronic-absence": "reports.attendance",
+        discipline: "discipline.manage",
+        complaints: "complaints.manage",
+        maintenance: "facilities.manage",
+        "staff-performance": "hr.manage",
       }[key];
     if (!permission || !permitted(req.user, permission))
       fail(403, "This report is not available to your role.");
@@ -160,7 +180,40 @@ export function reportingRoutes(db) {
       to = req.query.to ? date.parse(req.query.to) : today;
     if (from > to) fail(422, "The report start must precede its end.");
     const scope = studentScope(req.user);
+    if (req.query.class_id) {
+      const cid = id.parse(req.query.class_id);
+      await schoolRecord(db, req.user, "classes", cid);
+      scope.args.push(cid);
+      scope.sql += ` AND s.class_id=$${scope.args.length + 1}`;
+    }
     let data;
+    if (["attendance-summary", "chronic-absence"].includes(key))
+      data = await rows(
+        db,
+        `SELECT s.student_number,s.first_name,s.last_name,c.name AS class,count(*)::int AS recorded_days,count(*) FILTER(WHERE a.status IN ('PRESENT','LATE'))::int AS attended_days,count(*) FILTER(WHERE a.status='ABSENT')::int AS absent_days,round(100.0*count(*) FILTER(WHERE a.status IN ('PRESENT','LATE'))/count(*),2) AS attendance_percent FROM student_attendance a JOIN students s ON s.id=a.student_id LEFT JOIN classes c ON c.id=s.class_id WHERE a.school_id=$1${scope.sql} AND a.attendance_date BETWEEN $${scope.args.length + 2} AND $${scope.args.length + 3} GROUP BY s.id,c.name${key === "chronic-absence" ? ` HAVING count(*)>=3 AND 100.0*count(*) FILTER(WHERE a.status IN ('PRESENT','LATE'))/count(*)<${Number(school.attendance_threshold)}` : ""} ORDER BY s.last_name`,
+        [req.user.school_id, ...scope.args, from, to],
+      );
+    if (["discipline", "complaints", "maintenance"].includes(key))
+      data = await rows(
+        db,
+        "SELECT c.id AS case_reference,c.category,c.event_date,c.priority,c.stage,coalesce(s.first_name||' '||s.last_name,f.name,'') AS subject,u.name AS assigned_to,c.cost_cents,c.created_at,c.resolved_at FROM service_cases c LEFT JOIN students s ON s.id=c.student_id LEFT JOIN facilities f ON f.id=c.facility_id LEFT JOIN users u ON u.id=c.assigned_to WHERE c.school_id=$1 AND c.kind=$2 AND c.event_date BETWEEN $3 AND $4 ORDER BY c.event_date DESC",
+        [
+          req.user.school_id,
+          {
+            discipline: "DISCIPLINE",
+            complaints: "COMPLAINT",
+            maintenance: "MAINTENANCE",
+          }[key],
+          from,
+          to,
+        ],
+      );
+    if (key === "staff-performance")
+      data = await rows(
+        db,
+        "SELECT s.staff_number,s.first_name,s.last_name,s.department,y.name AS academic_year,r.overall_score,r.development_score,r.created_at FROM performance_reviews r JOIN staff s ON s.id=r.staff_id JOIN academic_years y ON y.id=r.academic_year_id WHERE r.school_id=$1 AND r.created_at::date BETWEEN $2 AND $3 ORDER BY r.created_at DESC",
+        [req.user.school_id, from, to],
+      );
     if (key === "students")
       data = await rows(
         db,
