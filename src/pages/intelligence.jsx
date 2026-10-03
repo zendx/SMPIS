@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import { ModelLab } from "./refinements";
+import React, { useEffect, useState } from "react";
 import { TrendingUp, Users, Wallet, AlertCircle } from "lucide-react";
 import { useData } from "../hooks";
 import { post } from "../api";
@@ -13,8 +14,12 @@ import {
   Loading,
   human,
 } from "../components";
-export function Intelligence({ money }) {
+export function Intelligence({ money, can }) {
   const q = useData("/intelligence", null);
+  useEffect(() => {
+    if (q.data && location.hash.endsWith("/models") && can("intelligence.manage"))
+      document.getElementById("historical-model-evaluation")?.scrollIntoView();
+  }, [q.data, can]);
   if (q.error) return <p className="form-error">{q.error}</p>;
   if (!q.data) return <Loading />;
   const d = q.data,
@@ -135,6 +140,11 @@ export function Intelligence({ money }) {
           />
         </Panel>
       </div>
+      {can("intelligence.manage") && (
+        <div id="historical-model-evaluation">
+          <ModelLab />
+        </div>
+      )}
       <Panel title="How to interpret this page">
         <ul>
           {d.limitations.map((s) => (

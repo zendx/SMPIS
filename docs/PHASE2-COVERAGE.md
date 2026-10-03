@@ -1,6 +1,6 @@
 # Phase 2: academics and curriculum
 
-This extends the existing React + Node.js application following the user's instruction to proceed to Phase 2. It does not complete both source documents: the Phase 1 follow-ups in [PHASE1-COVERAGE.md](PHASE1-COVERAGE.md), Phase 3, Phase 4 and external integrations remain separate work.
+This records the academic and curriculum extension following the user's instruction to proceed to Phase 2. It does not complete both source documents. Subsequent Phase 1 follow-ups, Phase 3 workflows and Phase 4 foundations are recorded in [PHASE3-4-COVERAGE.md](PHASE3-4-COVERAGE.md), with production work tracked separately.
 
 ## Requirements coverage
 
@@ -38,14 +38,17 @@ This extends the existing React + Node.js application following the user's instr
 
 ## Boundaries and follow-up
 
-- Report generation uses the current enrolled/suspended class roster. There is no term-specific enrollment or subject-elective history. Generate/finalize reports before moving students between classes; historical reconstruction after transfers needs a roster-history extension.
-- School-wide grading policy and class-wide subject assignments are supported. Separate grading policies per programme, optional student subject selections, examination timetabling and external examination-board integrations are not implemented.
+- Each class/term has a stable roster initialized from score/report evidence and enrollment dates. Transfers preserve source rosters and register students in current/future destination terms. Older rosters without source records are inferred once from current enrollment and must be checked against the school register. Managers can correct membership and electives with a reason.
+- School-wide grading remains the default. Class/term grading overrides and student subject elections are available under **Academics -> Records**. Assessment weights, score entry, reports and gradebook follow each student elective and applicable policy. The internal exam timetable checks room, class and invigilator conflicts; external examination-board integrations remain unimplemented.
 - Academic alerts are deterministic rules, not trained predictive models. Curriculum percentage measures topic completion, not learning outcomes or instructional quality.
-- Revision numbers and audit events record reopening; there is no separate UI to retrieve every superseded PDF snapshot.
+- Reopening saves each report card as a dated, reasoned revision. Authorized school staff can browse archived reports and download their original PDF; parents see only the currently published report.
 - External PostgreSQL server operation, concurrent production load, mail delivery, hosting and device/provider integrations still require their own validation. The local database and tests use PGlite.
+
+
+Historical limits: past class or subject assignments changed before roster capture cannot be inferred reliably from a current assignment table. Existing snapshots and enrollment/score evidence are preferred; managers should verify reconstructed records against the school register before finalizing. External exam-board connections are not configured.
 
 ## Evidence
 
-`tests/academics.test.js` adds nine integration groups to the existing sixteen. `tests/academic-browser.mjs` exercises the real Chrome workflow with an isolated database and writes desktop/mobile screenshots to `test-results/`. No test records are inserted into the actual school database. Run the commands listed in [README.md](../README.md) to repeat verification.
+`tests/academics.test.js` adds nine integration groups to the existing sixteen. `tests/academic-browser.mjs` exercises the real Chrome workflow with an isolated database and writes desktop/mobile screenshots to `test-results/`. No test records are inserted into the actual school database. Use **Academics -> Records** to verify transferred-student term rosters, subject elections, class grading policies, report revisions and the internal exam timetable. Run the commands in [README.md](../README.md) to repeat verification.
 
-Verified on September 30, 2026: all 25 integration tests passed; both the core and academic Chrome workflows passed; the production build passed. Desktop analytics/report screens and the mobile results screen were visually reviewed. The existing local database was backed up before restarting the application.
+On October 2, 2026, the API integration suite passed 48 tests and the production frontend build passed. Browser verification covered earlier academic journeys; the new Records workflows had integration checks but no new browser run.

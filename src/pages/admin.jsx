@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { QRCodeSVG } from "qrcode.react";
 import { IntegrationReadiness } from "./intelligence";
 import {
   Plus,
@@ -25,6 +26,10 @@ import {
   human,
 } from "../components";
 export function Reports({ can, config, notify, term }) {
+  const classes = useData(
+      can("reports.students") || can("reports.attendance") ? "/classes" : null,
+    ),
+    [classId, setClassId] = useState("");
   const [format, setFormat] = useState("csv"),
     [from, setFrom] = useState(`${config.today.slice(0, 4)}-01-01`),
     [to, setTo] = useState(config.today);
@@ -109,6 +114,22 @@ export function Reports({ can, config, notify, term }) {
       />
       <Panel>
         <div className="table-toolbar">
+          {(can("reports.students") || can("reports.attendance")) && (
+            <label className="inline-field">
+              Register / attendance class
+              <select
+                value={classId}
+                onChange={(e) => setClassId(e.target.value)}
+              >
+                <option value="">All allowed classes</option>
+                {classes.data.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           <label className="inline-field">
             From
             <input
@@ -149,7 +170,7 @@ export function Reports({ can, config, notify, term }) {
                 onClick={async () => {
                   try {
                     const response = await fetch(
-                      `/api/v1/reports/${key}?format=${format}&from=${from}&to=${to}`,
+                      `/api/v1/reports/${key}?format=${format}&from=${from}&to=${to}${classId && ["students", "attendance", "attendance-summary", "chronic-absence"].includes(key) ? `&class_id=${classId}` : ""}`,
                     );
                     if (!response.ok) {
                       const data = await response.json();
@@ -219,9 +240,24 @@ export function Administration({
   return (
     <>
       <PageHead
-        title="Administration"
-        description="The foundations of a well-run school workspace."
+        title={
+          user.mfa_setup_required
+            ? "Finish administrator security setup"
+            : "Administration"
+        }
+        description={
+          user.mfa_setup_required
+            ? "Workspace pages unlock after you enable two-step verification."
+            : "The foundations of a well-run school workspace."
+        }
       />
+      {user.mfa_setup_required && (
+        <div className="notice" role="status">
+          <strong>Complete this step to unlock the rest of SMPIS.</strong> Add
+          this account to an authenticator app, enter its six-digit code below,
+          and enable verification. Your other workspace pages will then appear.
+        </div>
+      )}
       <div className="tabs">
         {(isAdmin
           ? [
@@ -582,7 +618,18 @@ export function Administration({
                   </Button>
                 ) : (
                   <>
-                    <p>Authenticator setup key</p>
+                    <p>Scan this QR code in your authenticator app.</p>
+                    <div className="mfa-qr-code">
+                      <QRCodeSVG
+                        value={mfa.uri}
+                        size={220}
+                        level="M"
+                        includeMargin
+                        title="Authenticator setup QR code"
+                        aria-label="Authenticator setup QR code"
+                      />
+                    </div>
+                    <p>Or enter this authenticator setup key manually:</p>
                     <code className="secret-key">{mfa.secret}</code>
                     <p className="muted">
                       Account: {user.email} · Time-based · 6 digits · 30 seconds

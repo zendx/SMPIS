@@ -5,6 +5,7 @@ import { openDatabase, insert, one, rows } from "../server/db.js";
 import { createApp } from "../server/app.js";
 import { hashPassword, localClock } from "../server/security.js";
 import { parseTopicCsv } from "../server/academic-routes.js";
+import { subjectResults } from "../server/academic-service.js";
 process.env.REQUIRE_MFA = "false";
 let db,
   server,
@@ -901,4 +902,188 @@ test("academic exports produce real PDF, Excel and CSV and respect permissions",
   assert.ok(logs.some((l) => l.action === "PUBLISH"));
   assert.ok(logs.some((l) => l.action === "FINALIZE"));
   assert.ok(logs.some((l) => l.action === "RESOLVE"));
+});
+
+test("transfers preserve term rosters, published snapshots and archived report PDFs", async () => {
+  const before = await request("principal", `/report-cards/${card.id}`);
+  await request("admin", `/students/${student.id}/enrollment`, "POST", {
+    class_id: otherClass.id,
+  });
+  await request("principal", `/report-batches/${batch.id}/reopen`, "POST", {
+    reason: "Reconstruct after transfer",
+  });
+  const history = await request(
+    "teacher",
+    `/report-cards/${card.id}/revisions`,
+  );
+  assert.ok(history.some((h) => h.revision === before.revision));
+  const archived = await request(
+    "teacher",
+    `/report-cards/${card.id}?revision=${before.revision}`,
+  );
+  assert.deepEqual(archived.snapshot, before.snapshot);
+  const roster = await request("teacher", `/assessments/${ca.id}/scores`);
+  assert.ok(roster.students.some((s) => s.id === student.id));
+  await request("principal", "/report-cards/generate", "POST", {
+    class_id: cls.id,
+    term_id: term.id,
+  });
+  const reconstructed = await request("teacher", `/report-cards/${card.id}`);
+  assert.equal(reconstructed.snapshot.class_name, before.snapshot.class_name);
+  assert.deepEqual(reconstructed.snapshot.subjects, before.snapshot.subjects);
+  const pdf = await fetch(
+    `${base}/report-cards/${card.id}?revision=${before.revision}&format=pdf`,
+    { headers: { Cookie: clients.principal.cookie } },
+  );
+  assert.equal(pdf.status, 200);
+  assert.equal(
+    Buffer.from(await pdf.arrayBuffer())
+      .subarray(0, 5)
+      .toString(),
+    "%PDF-",
+  );
+  await request(
+    "outsider",
+    `/report-cards/${card.id}/revisions`,
+    "GET",
+    undefined,
+    404,
+  );
+  await request(
+    "parent",
+    `/report-cards/${card.id}/revisions`,
+    "GET",
+    undefined,
+    403,
+  );
+  await request(
+    "principal",
+    "/academics/roster",
+    "POST",
+    {
+      class_id: cls.id,
+      term_id: term.id,
+      student_id: student.id,
+      excluded: true,
+      reason: "Remove archived student",
+    },
+    409,
+  );
+});
+
+test("term roster corrections, electives and class grading policies respect locks and school boundaries", async () => {
+  const payload = {
+    class_id: cls.id,
+    term_id: term.id,
+    student_id: student2.id,
+    subject_ids: [assignment.id],
+    reason: "Registered elective choices",
+  };
+  await request("teacher", "/academics/roster", "POST", payload, 403);
+  await request("outsider", "/academics/roster", "POST", payload, 404);
+  await request("principal", "/academics/roster", "POST", payload);
+  const scores = await request(
+    "english",
+    `/assessments/${englishExam.id}/scores`,
+  );
+  assert.ok(!scores.students.some((s) => s.id === student2.id));
+  await request(
+    "english",
+    `/assessments/${englishExam.id}/scores`,
+    "POST",
+    { scores: [{ student_id: student2.id, score: 10 }] },
+    422,
+  );
+  const roster = await request(
+      "principal",
+      `/academics/roster?class_id=${cls.id}&term_id=${term.id}`,
+    ),
+    policy = { ...roster.policy.policy, pass_mark: 30 };
+  await request("principal", "/academics/class-policy", "POST", {
+    class_id: cls.id,
+    term_id: term.id,
+    label: "Junior programme",
+    policy,
+    reason: "Programme grading approved",
+  });
+  const result = await subjectResults(
+    db,
+    { ...accounts.principal, permissions: ["*"] },
+    cls.id,
+    term.id,
+    { teacherScope: false },
+  );
+  assert.equal(result.policy.pass_mark, 30);
+  assert.equal(
+    result.students.find((s) => s.id === student2.id).subjects.length,
+    1,
+  );
+  await request(
+    "principal",
+    "/academics/class-policy",
+    "POST",
+    {
+      class_id: cls.id,
+      term_id: term.id,
+      label: "Invalid",
+      policy: {
+        ...policy,
+        grading_scale: [
+          { letter: "A", minimum: 70, points: 4 },
+          { letter: "F", minimum: 10, points: 0 },
+        ],
+      },
+      reason: "Missing zero threshold",
+    },
+    422,
+  );
+});
+
+test("exam timetable rejects overlapping rooms, classes and invigilators and permits adjacent bookings", async () => {
+  const body = {
+    class_subject_id: assignment.id,
+    term_id: term.id,
+    exam_date: today,
+    start_time: "09:00",
+    end_time: "10:00",
+    room: "Hall A",
+    invigilator_id: accounts.teacher.id,
+    reason: "Term exam timetable",
+  };
+  const first = await request("principal", "/academics/exams", "POST", body);
+  await request(
+    "principal",
+    "/academics/exams",
+    "POST",
+    {
+      ...body,
+      class_subject_id: englishAssignment.id,
+      room: "Hall B",
+      start_time: "09:30",
+      end_time: "10:30",
+    },
+    409,
+  );
+  await request("principal", "/academics/exams", "POST", {
+    ...body,
+    start_time: "10:00",
+    end_time: "11:00",
+  });
+  await request("principal", "/academics/exams", "POST", {
+    ...body,
+    id: first.id,
+    room: "Hall C",
+  });
+  await request(
+    "principal",
+    "/academics/exams",
+    "POST",
+    { ...body, exam_date: day(60) },
+    422,
+  );
+  await request("outsider", "/academics/exams", "POST", body, 404);
+  assert.equal(
+    (await request("teacher", `/academics/exams?term_id=${term.id}`)).length,
+    2,
+  );
 });

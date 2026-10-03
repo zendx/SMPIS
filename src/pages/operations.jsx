@@ -1,3 +1,4 @@
+import { WorkCalendar, StaffDocuments, ReviewAmendment } from "./refinements";
 import React, { useState, useEffect } from "react";
 import { ClipboardList, Users, Wrench, Heart, TrendingUp } from "lucide-react";
 import { useData } from "../hooks";
@@ -203,7 +204,23 @@ function Cases({ kind, setup, user, can, config, notify, money }) {
     [modal, setModal] = useState(false),
     [selected, setSelected] = useState(null),
     [filter, setFilter] = useState("");
-  useEffect(()=>{const params=new URLSearchParams(location.search),wanted=Number(params.get('case_id'));if(wanted&&params.get('case_kind')===kind){const record=q.data.find(c=>c.id===wanted);if(record){setSelected(record);params.delete('case_id');params.delete('case_kind');history.replaceState(null,'',location.pathname+(params.size?'?'+params:'')+location.hash);}}},[q.data,kind]);
+  useEffect(() => {
+    const params = new URLSearchParams(location.search),
+      wanted = Number(params.get("case_id"));
+    if (wanted && params.get("case_kind") === kind) {
+      const record = q.data.find((c) => c.id === wanted);
+      if (record) {
+        setSelected(record);
+        params.delete("case_id");
+        params.delete("case_kind");
+        history.replaceState(
+          null,
+          "",
+          location.pathname + (params.size ? "?" + params : "") + location.hash,
+        );
+      }
+    }
+  }, [q.data, kind]);
   const canCreate =
     kind === "COMPLAINT"
       ? user.role === "PARENT" || can("complaints.manage")
@@ -384,9 +401,20 @@ function Surveys({ can, user, config, notify }) {
                     </button>
                   )
                 ) : (
-                  <button className="text-button" onClick={() => results(r)}>
-                    View results
-                  </button>
+                  <>
+                    {" "}
+                    {!r.published && can("complaints.manage") && (
+                      <button
+                        className="text-button"
+                        onClick={() => setModal({ type: "edit", row: r })}
+                      >
+                        Edit / publish
+                      </button>
+                    )}
+                    <button className="text-button" onClick={() => results(r)}>
+                      View results
+                    </button>
+                  </>
                 ),
             },
           ]}
@@ -399,14 +427,17 @@ function Surveys({ can, user, config, notify }) {
       {modal && (
         <Editor
           title={
-            modal.type === "new"
+            modal.type !== "answer"
               ? "Create satisfaction survey"
               : modal.row.title
           }
           onClose={() => setModal(null)}
           fields={
-            modal.type === "new"
+            modal.type !== "answer"
               ? [
+                  ...(modal.type === "edit"
+                    ? [memo("reason", "Reason for amendment")]
+                    : []),
                   txt("title", "Survey title"),
                   memo("questions", "Questions, one per line"),
                   day("start_date", "Start date", config.today),
@@ -430,22 +461,27 @@ function Surveys({ can, user, config, notify }) {
                 )
           }
           initial={
-            modal.type === "new"
-              ? {
-                  questions:
-                    "Teaching quality\nCommunication\nSafety\nFacilities\nTransportation\nValue for money\nOverall satisfaction",
-                }
-              : {}
+            modal.type === "edit"
+              ? { ...modal.row, questions: modal.row.questions.join("\n") }
+              : modal.type !== "answer"
+                ? {
+                    questions:
+                      "Teaching quality\nCommunication\nSafety\nFacilities\nTransportation\nValue for money\nOverall satisfaction",
+                  }
+                : {}
           }
           onSave={async (v) => {
-            if (modal.type === "new")
-              await post("/surveys", {
-                ...v,
-                questions: v.questions
-                  .split("\n")
-                  .map((s) => s.trim())
-                  .filter(Boolean),
-              });
+            if (modal.type !== "answer")
+              await (modal.type === "edit" ? patch : post)(
+                modal.type === "edit" ? `/surveys/${modal.row.id}` : "/surveys",
+                {
+                  ...v,
+                  questions: v.questions
+                    .split("\n")
+                    .map((s) => s.trim())
+                    .filter(Boolean),
+                },
+              );
             else
               await post(`/surveys/${modal.row.id}/responses`, {
                 answers: modal.row.questions.map((_, i) => Number(v[`q${i}`])),
@@ -454,7 +490,13 @@ function Surveys({ can, user, config, notify }) {
             q.reload();
             notify("Survey saved.");
           }}
-          submit={modal.type === "new" ? "Create survey" : "Submit answers"}
+          submit={
+            modal.type === "edit"
+              ? "Save survey"
+              : modal.type === "new"
+                ? "Create survey"
+                : "Submit answers"
+          }
         />
       )}
       {result && (
@@ -527,6 +569,62 @@ function OperationsPolicy({ setup, notify, onChange }) {
     </Panel>
   );
 }
+function RepeatedIncidents({ config, setup }) {
+  const [from, setFrom] = useState(`${config.today.slice(0, 4)}-01-01`),
+    [to, setTo] = useState(config.today),
+    [category, setCategory] = useState("");
+  const q = useData(
+    `/operations/discipline/repeated?from=${from}&to=${to}&category=${category}`,
+  );
+  return (
+    <Panel
+      title="Repeated discipline incidents"
+      description="Students with at least two recorded incidents in the selected period. This is a review aid; decisions require investigation."
+    >
+      <div className="table-toolbar">
+        <label className="inline-field">
+          Incident report from
+          <input
+            type="date"
+            value={from}
+            onChange={(e) => setFrom(e.target.value)}
+          />
+        </label>
+        <label className="inline-field">
+          Incident report to
+          <input
+            type="date"
+            value={to}
+            onChange={(e) => setTo(e.target.value)}
+          />
+        </label>
+        <label className="inline-field">
+          Incident type
+          <select
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+          >
+            <option value="">All categories</option>
+            {setup.categories.DISCIPLINE.map((c) => (
+              <option key={c} value={c}>
+                {human(c)}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+      <Errors queries={[q]} />
+      <Table
+        rows={q.data}
+        columns={[
+          { label: "Student", render: person },
+          { label: "Incidents", key: "incidents" },
+        ]}
+        empty={{ title: "No repeated incidents in this period" }}
+      />
+    </Panel>
+  );
+}
 export function Quality(props) {
   const { can, user, config, notify } = props,
     setup = useData("/operations/setup", null),
@@ -544,7 +642,12 @@ export function Quality(props) {
         : []),
       ...(can("admin.write") ? ["policy"] : []),
     ],
-    [tab, setTab] = useState(new URLSearchParams(location.search).get('case_kind')==='COMPLAINT'&&tabs.includes('complaints')?'complaints':tabs[0]);
+    [tab, setTab] = useState(
+      new URLSearchParams(location.search).get("case_kind") === "COMPLAINT" &&
+        tabs.includes("complaints")
+        ? "complaints"
+        : tabs[0],
+    );
   return (
     <>
       <PageHead
@@ -581,6 +684,9 @@ export function Quality(props) {
             kind={tab === "discipline" ? "DISCIPLINE" : "COMPLAINT"}
           />
         ))}
+      {setup.data && tab === "discipline" && can("discipline.manage") && (
+        <RepeatedIncidents config={config} setup={setup.data} />
+      )}
     </>
   );
 }
@@ -757,12 +863,20 @@ export function Facilities(props) {
 export function People({ can, user, config, notify }) {
   const setup = useData("/operations/setup", null),
     q = useData("/hr/overview", null),
-    [tab, setTab] = useState("leave"),
+    [tab, setTab] = useState(() => {
+      const requested = location.hash.slice(1).split("/")[1];
+      const allowed = can("hr.manage")
+        ? ["leave", "profiles", "vacancies", "applicants", "reviews", "calendar"]
+        : ["leave"];
+      return allowed.includes(requested)
+        ? requested
+        : "leave";
+    }),
     [modal, setModal] = useState(null),
     [detail, setDetail] = useState(null),
     manage = can("hr.manage"),
     tabs = manage
-      ? ["leave", "profiles", "vacancies", "applicants", "reviews"]
+      ? ["leave", "profiles", "vacancies", "applicants", "reviews", "calendar"]
       : ["leave"];
   const data = q.data,
     s = setup.data;
@@ -779,6 +893,7 @@ export function People({ can, user, config, notify }) {
           : undefined,
         hire_date: v.hire_date || undefined,
       });
+    if (type === "cancel") await post(`/hr/leave/${modal.row.id}/cancel`, v);
     if (type === "leave") await post("/hr/leave", v);
     if (type === "decision")
       await post(`/hr/leave/${modal.row.id}/decision`, v);
@@ -836,6 +951,7 @@ export function People({ can, user, config, notify }) {
       day("end_date", "Leave end", config.today),
       memo("reason", "Reason for leave"),
     ],
+    cancel: [memo("reason", "Reason for cancellation")],
     decision: [
       choice("status", "Decision", [
         ...(modal?.row?.supervisor_user_id === user.id ? ["REVIEWED"] : []),
@@ -868,7 +984,8 @@ export function People({ can, user, config, notify }) {
           </button>
         ))}
       </div>
-      {data && s && (
+      {tab === "calendar" && manage && <WorkCalendar notify={notify} />}
+      {data && s && tab !== "calendar" && (
         <Panel
           title={human(tab)}
           action={
@@ -906,7 +1023,9 @@ export function People({ can, user, config, notify }) {
             <>
               <p className="muted">
                 Your supervisor reviews the request; HR then approves or rejects
-                it. Approved leave marks every calendar day in the range.
+                it. Approved leave counts configured working days, excludes
+                holidays and checks the annual allowance. HR can cancel an
+                approval; request amended dates as a new application.
               </p>
               <Table
                 rows={data.leave}
@@ -915,8 +1034,29 @@ export function People({ can, user, config, notify }) {
                   { label: "From", key: "start_date" },
                   { label: "To", key: "end_date" },
                   {
+                    label: "Working days",
+                    render: (r) => r.working_days ?? "Pending",
+                  },
+                  {
+                    label: "",
+                    render: (r) =>
+                      !r.cancelled_at &&
+                      r.status !== "REJECTED" &&
+                      (manage ||
+                        (r.user_id === user.id && r.status !== "APPROVED")) && (
+                        <button
+                          className="text-button"
+                          onClick={() => setModal({ type: "cancel", row: r })}
+                        >
+                          Cancel leave
+                        </button>
+                      ),
+                  },
+                  {
                     label: "Status",
-                    render: (r) => <Badge value={r.status} />,
+                    render: (r) => (
+                      <Badge value={r.cancelled_at ? "CANCELLED" : r.status} />
+                    ),
                   },
                   {
                     label: "Reason",
@@ -925,6 +1065,7 @@ export function People({ can, user, config, notify }) {
                   {
                     label: "",
                     render: (r) =>
+                      !r.cancelled_at &&
                       !["APPROVED", "REJECTED"].includes(r.status) &&
                       (manage || r.supervisor_user_id === user.id) && (
                         <button
@@ -945,6 +1086,17 @@ export function People({ can, user, config, notify }) {
               columns={[
                 { label: "Staff", render: person },
                 { label: "Department", key: "department" },
+                {
+                  label: "Documents",
+                  render: (r) => (
+                    <button
+                      className="text-button"
+                      onClick={() => setDetail({ documents: r })}
+                    >
+                      HR documents
+                    </button>
+                  ),
+                },
                 {
                   label: "Supervisor",
                   render: (r) =>
@@ -1057,6 +1209,18 @@ export function People({ can, user, config, notify }) {
                 columns={[
                   { label: "Staff", render: person },
                   { label: "Year", key: "year_name" },
+                  { label: "Revision", key: "revision" },
+                  {
+                    label: "",
+                    render: (r) => (
+                      <button
+                        className="text-button"
+                        onClick={() => setDetail({ amend: r })}
+                      >
+                        Amend / history
+                      </button>
+                    ),
+                  },
                   {
                     label: "Score",
                     render: (r) => r.overall_score ?? "Insufficient data",
@@ -1098,6 +1262,7 @@ export function People({ can, user, config, notify }) {
               recruit: "Progress applicant",
               leave: "Request leave",
               decision: "Review leave",
+              cancel: "Cancel leave",
               review: "Record performance review",
             }[modal.type]
           }
@@ -1107,7 +1272,22 @@ export function People({ can, user, config, notify }) {
           onSave={save}
         />
       )}
-      {detail && (
+      {detail?.documents && (
+        <StaffDocuments
+          staff={detail.documents}
+          onClose={() => setDetail(null)}
+          notify={notify}
+        />
+      )}
+      {detail?.amend && (
+        <ReviewAmendment
+          review={detail.amend}
+          onClose={() => setDetail(null)}
+          onChange={q.reload}
+          notify={notify}
+        />
+      )}
+      {detail && !detail.documents && !detail.amend && (
         <Modal title={detail.title} onClose={() => setDetail(null)}>
           {detail.history ? (
             <Table

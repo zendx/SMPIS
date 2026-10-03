@@ -1013,6 +1013,35 @@ td p {
   font-size: 12px;
   min-height: 40px;
 }
+.password-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.password-input-wrap input {
+  padding-right: 46px;
+}
+.password-toggle {
+  position: absolute;
+  right: 5px;
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #70806a;
+  cursor: pointer;
+}
+.password-toggle:hover {
+  background: #eff3e9;
+  color: #34492d;
+}
+.password-toggle:focus-visible {
+  outline: 2px solid #718d55;
+  outline-offset: 1px;
+}
 .field small {
   font-size: 10px;
   color: #9eaa92;
@@ -1252,6 +1281,18 @@ td p {
 }
 .security-panel p {
   font-size: 12px;
+}
+.mfa-qr-code {
+  display: inline-block;
+  padding: 12px;
+  border: 1px solid var(--line, #dce5dc);
+  border-radius: 10px;
+  background: #fff;
+}
+.mfa-qr-code svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
 }
 .secret-key {
   display: block;

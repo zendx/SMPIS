@@ -113,7 +113,7 @@ const closed = () => dialog().waitFor({ state: "hidden" });
 async function login(who) {
   await page.goto(origin);
   await field("Email address").fill(`${who}@phase2.test`);
-  await field("Password").fill("Phase-two-browser!");
+  await page.getByLabel(/^Password \*$/).fill("Phase-two-browser!");
   await click("Sign in to your workspace");
   await page.locator("nav").waitFor();
 }

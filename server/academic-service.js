@@ -1,6 +1,7 @@
 import { one, rows, insert, audit } from "./db.js";
 import { fail, localClock, permitted } from "./security.js";
 import { schoolRecord, currentSchool } from "./services.js";
+import { termRoster } from "./history-service.js";
 
 export const round = (n) =>
   Math.round((Number(n) + Number.EPSILON) * 100) / 100;
@@ -89,7 +90,14 @@ export async function subjectResults(
   { teacherScope = true } = {},
 ) {
   await matchTerm(db, u, classId, termId);
-  const policy = await academicPolicy(db, u.school_id);
+  const policy =
+    (
+      await one(
+        db,
+        "SELECT policy FROM academic_class_policies WHERE school_id=$1 AND class_id=$2 AND term_id=$3",
+        [u.school_id, classId, termId],
+      )
+    )?.policy || (await academicPolicy(db, u.school_id));
   const assignments = await rows(
     db,
     `SELECT cs.*,s.name AS subject_name,s.code,s.department,u.name AS teacher_name FROM class_subjects cs JOIN subjects s ON s.id=cs.subject_id JOIN users u ON u.id=cs.teacher_user_id WHERE cs.school_id=$1 AND cs.class_id=$2${teacherScope && u.role === "TEACHER" ? " AND cs.teacher_user_id=$3" : ""} ORDER BY s.name`,
@@ -97,11 +105,7 @@ export async function subjectResults(
       ? [u.school_id, classId, u.id]
       : [u.school_id, classId],
   );
-  const students = await rows(
-    db,
-    "SELECT id,first_name,last_name,student_number FROM students WHERE school_id=$1 AND class_id=$2 AND status IN ('ENROLLED','SUSPENDED') ORDER BY last_name,first_name",
-    [u.school_id, classId],
-  );
+  const students = await termRoster(db, u, classId, termId);
   const assessments = await rows(
     db,
     "SELECT a.* FROM assessments a JOIN class_subjects cs ON cs.id=a.class_subject_id WHERE a.school_id=$1 AND cs.class_id=$2 AND a.term_id=$3 ORDER BY a.assessment_date,a.id",
@@ -116,54 +120,59 @@ export async function subjectResults(
     scores.map((s) => [`${s.assessment_id}:${s.student_id}`, Number(s.score)]),
   );
   const results = students.map((student) => {
-    const subjects = assignments.map((cs) => {
-      const items = assessments
-        .filter((a) => a.class_subject_id === cs.id)
-        .map((a) => ({
-          ...a,
-          score: scoreMap.get(`${a.id}:${student.id}`) ?? null,
-        }));
-      const weight = round(
-        items.reduce((n, a) => n + Number(a.weight_percent), 0),
-      );
-      const complete =
-        items.length > 0 &&
-        weight === 100 &&
-        items.every((a) => a.score !== null);
-      const total = complete
-        ? round(
-            items.reduce(
-              (n, a) =>
-                n + (a.score / Number(a.max_score)) * Number(a.weight_percent),
-              0,
-            ),
-          )
-        : null;
-      return {
-        class_subject_id: cs.id,
-        subject_id: cs.subject_id,
-        subject_name: cs.subject_name,
-        code: cs.code,
-        department: cs.department,
-        teacher_user_id: cs.teacher_user_id,
-        teacher_name: cs.teacher_name,
-        credits: Number(cs.credits),
-        weight_percent: weight,
-        complete,
-        total,
-        grade: complete ? grade(total, policy).letter : null,
-        grade_points: complete ? Number(grade(total, policy).points) : null,
-        passed: complete ? total >= Number(policy.pass_mark) : null,
-        assessments: items.map((a) => ({
-          id: a.id,
-          name: a.name,
-          type: a.type,
-          max_score: Number(a.max_score),
-          weight_percent: Number(a.weight_percent),
-          score: a.score,
-        })),
-      };
-    });
+    const subjects = assignments
+      .filter(
+        (cs) => !student.subject_ids || student.subject_ids.includes(cs.id),
+      )
+      .map((cs) => {
+        const items = assessments
+          .filter((a) => a.class_subject_id === cs.id)
+          .map((a) => ({
+            ...a,
+            score: scoreMap.get(`${a.id}:${student.id}`) ?? null,
+          }));
+        const weight = round(
+          items.reduce((n, a) => n + Number(a.weight_percent), 0),
+        );
+        const complete =
+          items.length > 0 &&
+          weight === 100 &&
+          items.every((a) => a.score !== null);
+        const total = complete
+          ? round(
+              items.reduce(
+                (n, a) =>
+                  n +
+                  (a.score / Number(a.max_score)) * Number(a.weight_percent),
+                0,
+              ),
+            )
+          : null;
+        return {
+          class_subject_id: cs.id,
+          subject_id: cs.subject_id,
+          subject_name: cs.subject_name,
+          code: cs.code,
+          department: cs.department,
+          teacher_user_id: cs.teacher_user_id,
+          teacher_name: cs.teacher_name,
+          credits: Number(cs.credits),
+          weight_percent: weight,
+          complete,
+          total,
+          grade: complete ? grade(total, policy).letter : null,
+          grade_points: complete ? Number(grade(total, policy).points) : null,
+          passed: complete ? total >= Number(policy.pass_mark) : null,
+          assessments: items.map((a) => ({
+            id: a.id,
+            name: a.name,
+            type: a.type,
+            max_score: Number(a.max_score),
+            weight_percent: Number(a.weight_percent),
+            score: a.score,
+          })),
+        };
+      });
     const complete = subjects.length > 0 && subjects.every((s) => s.complete),
       credits = subjects.reduce((n, s) => n + s.credits, 0);
     const average = complete
@@ -297,13 +306,16 @@ export async function evaluateRisk(tx, schoolId) {
   const history = new Map();
   const active = [];
   for (const card of cards) {
+    const cardPolicy = card.snapshot.policy || policy;
     const previous = (history.get(card.student_id) || []).filter(
       (c) => c.term_id !== card.term_id,
     );
-    const failures = [...previous, card].slice(-policy.repeated_failure_terms);
+    const failures = [...previous, card].slice(
+      -cardPolicy.repeated_failure_terms,
+    );
     const reasons = [];
     if (
-      failures.length === policy.repeated_failure_terms &&
+      failures.length === cardPolicy.repeated_failure_terms &&
       failures.every((c) => c.snapshot.passed === false)
     )
       reasons.push([
@@ -314,7 +326,7 @@ export async function evaluateRisk(tx, schoolId) {
       decline = last
         ? round(Number(last.overall_average) - Number(card.overall_average))
         : 0;
-    if (last && decline >= Number(policy.decline_threshold))
+    if (last && decline >= Number(cardPolicy.decline_threshold))
       reasons.push([
         "GRADE_DECLINE",
         `Average declined ${decline} points: ${last.overall_average}% to ${card.overall_average}%.`,
@@ -323,7 +335,7 @@ export async function evaluateRisk(tx, schoolId) {
     if (
       !card.snapshot.passed &&
       att.recorded >= 3 &&
-      att.percentage < policy.risk_attendance_threshold
+      att.percentage < cardPolicy.risk_attendance_threshold
     )
       reasons.push([
         "LOW_ATTENDANCE_AND_PERFORMANCE",

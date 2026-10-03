@@ -106,7 +106,7 @@ const click = (label) =>
 async function login(who) {
   await page.goto(origin);
   await field("Email address").fill(`${who}@opsbrowser.test`);
-  await field("Password").fill(password);
+  await page.getByLabel(/^Password \*$/).fill(password);
   await click("Sign in to your workspace");
   await page.locator("nav").waitFor();
 }

@@ -1,4 +1,5 @@
 import express from "express";
+import { termRoster, archiveBatch } from "./history-service.js";
 import PDFDocument from "pdfkit";
 import ExcelJS from "exceljs";
 import { z, text, optionalText, id, date } from "./validation.js";
@@ -37,7 +38,7 @@ const allow =
     next();
   };
 const ok = (res, data) => res.json({ data, errors: [] });
-const policySchema = z.object({
+export const policySchema = z.object({
   grading_scale: z
     .array(
       z.object({
@@ -506,12 +507,26 @@ export function academicRoutes(db) {
           id.parse(req.params.id),
         ),
         cs = await assignedSubject(db, req.user, a.class_subject_id),
-        policy = await academicPolicy(db, req.user.school_id);
-      const roster = await rows(
-        db,
-        "SELECT s.id,s.first_name,s.last_name,s.student_number,sc.score FROM students s LEFT JOIN student_scores sc ON sc.student_id=s.id AND sc.assessment_id=$3 WHERE s.school_id=$1 AND s.class_id=$2 AND s.status IN ('ENROLLED','SUSPENDED') ORDER BY s.last_name,s.first_name",
-        [req.user.school_id, cs.class_id, a.id],
-      );
+        policy =
+          (
+            await one(
+              db,
+              "SELECT policy FROM academic_class_policies WHERE school_id=$1 AND class_id=$2 AND term_id=$3",
+              [req.user.school_id, cs.class_id, a.term_id],
+            )
+          )?.policy || (await academicPolicy(db, req.user.school_id));
+      const members = await termRoster(db, req.user, cs.class_id, a.term_id),
+        scores = await rows(
+          db,
+          "SELECT student_id,score FROM student_scores WHERE school_id=$1 AND assessment_id=$2",
+          [req.user.school_id, a.id],
+        );
+      const roster = members
+        .filter((s) => !s.subject_ids || s.subject_ids.includes(cs.id))
+        .map((s) => ({
+          ...s,
+          score: scores.find((v) => v.student_id === s.id)?.score ?? null,
+        }));
       let locked = false,
         lock_reason = "";
       try {
@@ -566,6 +581,7 @@ export function academicRoutes(db) {
         a = await schoolRecord(tx, req.user, "assessments", aid);
         await assignedSubject(tx, req.user, a.class_subject_id);
         await assertEditable(tx, req.user, cs.class_id, a.term_id);
+        const roster = await termRoster(tx, req.user, cs.class_id, a.term_id);
         for (const score of b.scores) {
           const s = await schoolRecord(
             tx,
@@ -574,12 +590,15 @@ export function academicRoutes(db) {
             score.student_id,
           );
           if (
-            s.class_id !== cs.class_id ||
-            !["ENROLLED", "SUSPENDED"].includes(s.status)
+            !roster.some(
+              (r) =>
+                r.id === s.id &&
+                (!r.subject_ids || r.subject_ids.includes(cs.id)),
+            )
           )
             fail(
               422,
-              "Scores must belong to enrolled students in the assigned class.",
+              "Scores must belong to students taking this subject in the class term roster.",
             );
           if (score.score !== null && score.score > Number(a.max_score))
             fail(
@@ -732,6 +751,7 @@ export function academicRoutes(db) {
             403,
             "Only a publishing officer may withdraw published reports.",
           );
+        await archiveBatch(tx, req.user, b, reason);
         await tx.query(
           "UPDATE report_batches SET status='DRAFT',revision=revision+1,finalized_at=NULL,published_at=NULL WHERE id=$1",
           [bid],
@@ -785,7 +805,21 @@ export function academicRoutes(db) {
     "/report-cards/:id",
     allow("reports.academic.read", "reports.academic.own"),
     async (req, res) => {
-      const card = await reportAccess(db, req.user, id.parse(req.params.id));
+      let card = await reportAccess(db, req.user, id.parse(req.params.id));
+      if (req.query.revision) {
+        if (!permitted(req.user, "reports.academic.read"))
+          fail(
+            403,
+            "Archived revisions are available to authorized school staff only.",
+          );
+        const archived = await one(
+          db,
+          "SELECT record FROM report_revisions WHERE school_id=$1 AND report_card_id=$2 AND revision=$3",
+          [req.user.school_id, card.id, id.parse(req.query.revision)],
+        );
+        if (!archived) fail(404, "Archived revision not found.");
+        card = { ...archived.record, archived: true };
+      }
       if (req.query.format !== "pdf") return ok(res, card);
       const doc = new PDFDocument({ size: "A4", margin: 45 });
       res

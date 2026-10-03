@@ -1,3 +1,4 @@
+import { AcademicRecords } from "./refinements";
 import React, { useEffect, useState } from "react";
 import {
   Plus,
@@ -196,9 +197,35 @@ function ScoreEntry({ assessment, onClose, notify }) {
   );
 }
 function ReportDetail({ id, onClose, user, notify, onChange }) {
-  const q = useData(`/report-cards/${id}`, null);
+  const [revision, setRevision] = useState("");
+  const history = useData(
+    !["PARENT", "STUDENT"].includes(user.role)
+      ? `/report-cards/${id}/revisions`
+      : null,
+  );
+  const q = useData(
+    `/report-cards/${id}${revision ? `?revision=${revision}` : ""}`,
+    null,
+  );
   return (
     <Modal title="Student report card" onClose={onClose}>
+      {history.data?.length > 0 && (
+        <label className="field">
+          Report version
+          <select
+            value={revision}
+            onChange={(e) => setRevision(e.target.value)}
+          >
+            <option value="">Current version</option>
+            {history.data.map((h) => (
+              <option key={h.revision} value={h.revision}>
+                Archived revision {h.revision} ? {h.reason}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      {revision && <p className="notice">Archived report ? read only.</p>}
       {q.error ? (
         <p className="form-error">{q.error}</p>
       ) : !q.data ? (
@@ -250,7 +277,7 @@ function ReportDetail({ id, onClose, user, notify, onChange }) {
             onClick={async () => {
               try {
                 await downloadAcademic(
-                  `/report-cards/${id}?format=pdf`,
+                  `/report-cards/${id}?format=pdf${revision ? `&revision=${revision}` : ""}`,
                   `report-${id}.pdf`,
                 );
               } catch (e) {
@@ -261,7 +288,8 @@ function ReportDetail({ id, onClose, user, notify, onChange }) {
             <Download size={16} />
             Download PDF
           </Button>
-          {q.data.status === "DRAFT" &&
+          {!revision &&
+          q.data.status === "DRAFT" &&
           !["PARENT", "STUDENT"].includes(user.role) ? (
             <>
               <h3 className="section-title">Report comments</h3>
@@ -1120,10 +1148,14 @@ export function Academics({ user, can, term, config, notify }) {
     ["report cards", can("reports.academic.read") || own],
     ["analytics", can("analytics.read") || can("analytics.summary")],
     ["setup", can("academics.manage")],
+    ["records", can("academics.manage")],
   ]
     .filter(([, show]) => show)
     .map(([name]) => name);
-  const [tab, setTab] = useState(tabs[0]),
+  const [tab, setTab] = useState(() => {
+      const requested = location.hash.slice(1).split("/")[1];
+      return tabs.includes(requested) ? requested : tabs[0];
+    }),
     [modal, setModal] = useState(null),
     [selectedClass, setSelectedClass] = useState(""),
     [assignment, setAssignment] = useState("");
@@ -1351,6 +1383,13 @@ export function Academics({ user, can, term, config, notify }) {
               notify={notify}
             />
           )}{" "}
+          {tab === "records" && setup.data && (
+            <AcademicRecords
+              setup={{ ...setup.data, classes }}
+              term={term}
+              notify={notify}
+            />
+          )}
           {tab === "setup" && setup.data && (
             <SetupTab
               setup={setup.data}

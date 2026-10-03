@@ -46,4 +46,22 @@ The user subsequently authorized Phase 2 and approved configurable A/B/C/D/E/F t
 
 Implementation lives in `server/academic-schema.sql`, `server/academic-service.js`, `server/academic-routes.js`, `src/pages/academics.jsx` and `src/pages/curriculum.jsx`. It includes weighted assessments, school grading policy, optional credit-weighted GPA/ranks, draft/finalized/published report snapshots, parent/student publication gates, deterministic academic support flags, curriculum imports/logs/coverage and audited exports. Shared calendar-date parsing now returns consistent date strings for PGlite and PostgreSQL, including historical term checks.
 
-Nine new academic integration groups bring the suite to 25 tests. The separate academic Chrome workflow exercises management, teacher and parent journeys. See [Phase 2 coverage](PHASE2-COVERAGE.md) for requirement mapping and material limitations, including current-roster report generation. Phase 1 follow-ups, Phase 3, Phase 4 and external deployment/integrations remain outstanding; Phase 2 authorization does not imply they are complete.
+Nine new academic integration groups brought the suite to 25 tests at that milestone. The separate academic Chrome workflow exercises management, teacher and parent journeys. See [Phase 2 coverage](PHASE2-COVERAGE.md) for requirement mapping and material limitations, including current-roster report generation.
+
+## Operations, multi-school and integration extension
+
+The user authorized the remaining work, selected Paystack, identified Hostinger and smpis.com, requested multiple schools, and confirmed there is no historical dataset. The next increment adds shared case workflows for discipline/complaints/maintenance, surveys, HR/recruitment/leave/reviews, facilities/assets, management alerts and exports. Shared case storage preserves kind-specific relationships, validation and access rules; it intentionally replaces the illustrative package's separate incident/complaint/maintenance action tables.
+
+Phase 1 follow-ups include MFA recovery codes, class batch invoices and attendance summaries. Phase 4 foundations include school provisioning restricted to designated platform operators, descriptive family/enrollment indicators, and a revenue baseline with rolling backtesting and a six-month data gate. This is not a trained predictive system. The Paystack adapter and Hostinger VPS package are prepared; external credentials, deployment, provider verification and operational certification remain outstanding.
+
+See [Phase 3–4 coverage](PHASE3-4-COVERAGE.md) and [Hostinger production preparation](PRODUCTION-HOSTINGER.md) for exact boundaries, user decisions and verification requirements.
+
+## Remaining-work follow-up
+
+Term rosters initialize from score/report evidence and enrollment dates, preserve transfer history, and populate current/future destination terms. School staff can correct rosters, electives and class/term grading rules, schedule conflict-checked exams, and retrieve reasoned archived report revisions/PDFs in **Academics -> Records**. Older changes to assignments made before these records existed still need register review.
+
+HR now has private audited document uploads, configurable work calendars and holidays, annual working-day caps, leave cancellation that restores only attendance changes owned by that approval, and versioned staff-review amendments. Draft surveys can be changed and published; published questions stay fixed. Legacy approved leave without a change ledger requires HR reconciliation before cancellation. Leave is a fixed yearly cap, not an accrual calculation.
+
+Historical intelligence datasets are school-scoped and provenance/checksum tracked. Revenue and fixed-feature support/retention evaluations use temporal holdouts and compare against simple baselines. The evaluation pipelines have synthetic test fixtures only. The user confirmed no authentic historical data exists, so real-data validation and production prediction activation are unavailable.
+
+Last full API integration run (October 2, 2026): 48 passing tests; production build passed. Minor permission and migration review changes followed October 3; new screens have not had a dedicated browser run. Validation on external PostgreSQL and the persistent school database remains outstanding.

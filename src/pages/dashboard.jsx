@@ -14,7 +14,7 @@ import {
 import { useData } from "../hooks";
 import { patch } from "../api";
 import { OperationsMetrics } from "./operations";
-import {openAlert} from './alerts';
+import { openAlert } from "./alerts";
 import {
   PageHead,
   Button,
@@ -51,6 +51,64 @@ export function Dashboard({ user, config, term, can, money, go, notify }) {
             (Number(d.finance.collected) / Number(d.finance.billed)) * 100,
           )
         : 0;
+  const newTools = [
+    (can("academics.manage") ||
+      can("academics.read") ||
+      can("analytics.summary")) && {
+      label: can("academics.manage")
+        ? "Academic records"
+        : can("analytics.summary") && !can("academics.read")
+          ? "Academic analytics"
+          : "Academics",
+      page: "academics",
+      section: can("academics.manage")
+        ? "records"
+        : can("analytics.summary") && !can("academics.read")
+          ? "analytics"
+          : undefined,
+    },
+    (can("curriculum.read") || can("curriculum.summary")) && {
+      label: "Curriculum tracking",
+      page: "curriculum",
+    },
+    (can("operations.staff") ||
+      can("experience.own") ||
+      can("operations.summary")) && {
+      label: "School experience",
+      page: "quality",
+    },
+    can("operations.staff") && {
+      label: "Facilities & assets",
+      page: "facilities",
+    },
+    can("hr.manage") && {
+      label: "Staff documents",
+      page: "people",
+      section: "profiles",
+    },
+    can("hr.manage") && {
+      label: "HR calendar",
+      page: "people",
+      section: "calendar",
+    },
+    can("hr.manage") && {
+      label: "Review amendments",
+      page: "people",
+      section: "reviews",
+    },
+    can("operations.staff") && !can("hr.manage") && {
+      label: "My leave",
+      page: "people",
+      section: "leave",
+    },
+    can("intelligence.read") && {
+      label: can("intelligence.manage")
+        ? "Historical model evaluation"
+        : "Intelligence",
+      page: "intelligence",
+      section: can("intelligence.manage") ? "models" : undefined,
+    },
+  ].filter(Boolean);
   return (
     <>
       <PageHead
@@ -84,6 +142,24 @@ export function Dashboard({ user, config, term, can, money, go, notify }) {
           <span /> Live school records
         </div>
       </div>
+      {newTools.length > 0 && (
+        <Panel
+          title="New and expanded tools"
+          description="Open the academic, HR and intelligence screens available to your account."
+        >
+          <div className="toolbar">
+            {newTools.map((tool) => (
+              <Button
+                key={tool.label}
+                secondary
+                onClick={() => go(tool.page, tool.section)}
+              >
+                {tool.label}
+              </Button>
+            ))}
+          </div>
+        </Panel>
+      )}
       <div className="metrics-grid">
         <Metric
           label="Enrolled students"
@@ -198,7 +274,7 @@ export function Dashboard({ user, config, term, can, money, go, notify }) {
                     <small>{a.category}</small>
                     <button
                       className="alert-link"
-                      onClick={() => openAlert(a,go)}
+                      onClick={() => openAlert(a, go)}
                     >
                       {a.message}
                     </button>

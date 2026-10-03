@@ -48,9 +48,20 @@ try {
   await field("Year ends").fill(`${year}-12-31`);
   await save("Create school workspace");
   await field("Email address").fill("admin@greenfield.test");
-  await field("Password").fill("Browser-test-2026!");
+  await page.getByLabel(/^Password \*$/).fill("Browser-test-2026!");
   await save("Sign in to your workspace");
+  await page
+    .getByRole("heading", { name: "Finish administrator security setup" })
+    .waitFor();
+  await page
+    .getByText("Complete this step to unlock the rest of SMPIS.")
+    .waitFor();
+  assert.equal(await page.locator("nav button").count(), 1);
   await save("Set up authenticator");
+  await page
+    .getByRole("img", { name: "Authenticator setup QR code" })
+    .waitFor();
+  assert.ok(await page.locator(".secret-key").isVisible());
   const secret = await page.locator(".secret-key").textContent();
   const otp = new OTPAuth.TOTP({
     issuer: "SMPIS",
@@ -59,12 +70,18 @@ try {
   });
   await field("Verification code").fill(otp.generate());
   await save("Enable verification");
+  await page.locator("nav").getByRole("button", { name: "Overview" }).waitFor();
   await navigate("Overview");
   await page.getByRole("heading", { name: "Welcome, School" }).waitFor();
   await page.screenshot({
     path: "test-results/dashboard-desktop.png",
     fullPage: true,
   });
+  await page.getByRole("button", { name: "Academic records" }).click();
+  await page.getByRole("heading", { name: "Historical class records" }).waitFor();
+  assert.equal(new URL(page.url()).hash, "#academics/records");
+  await page.reload();
+  await page.getByRole("heading", { name: "Historical class records" }).waitFor();
   await navigate("Administration");
   await save("Classes");
   await save("New class");

@@ -1,3 +1,6 @@
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { createHmac } from "node:crypto";
@@ -9,6 +12,7 @@ import { refreshOperationAlerts } from "../server/operations-service.js";
 import { refreshAlerts } from "../server/services.js";
 import { forecastSeries } from "../server/intelligence.js";
 process.env.REQUIRE_MFA = "false";
+let documentDir;
 let db,
   server,
   base,
@@ -72,7 +76,9 @@ async function login(name) {
 }
 before(async () => {
   db = await openDatabase({ memory: true });
+  documentDir = await mkdtemp(path.join(tmpdir(), "smpis-hr-test-"));
   const app = await createApp(db, {
+    dataDir: documentDir,
     gatewayRequest: async (key, path, body) => {
       gatewayCalls.push({ path, body });
       if (body)
@@ -180,6 +186,7 @@ before(async () => {
   for (const name of Object.keys(users)) await login(name);
 });
 after(async () => {
+  if (documentDir) await rm(documentDir, { recursive: true, force: true });
   await new Promise((r) => server.close(r));
   await db.close();
   delete process.env.PAYSTACK_SCHOOL_KEYS_JSON;
@@ -571,7 +578,10 @@ test("leave routes to supervisors, prevents self approval and marks approved att
         [staff.id],
       )
     ).n,
-    3,
+    [2, 3, 4].filter(
+      (offset) =>
+        ![0, 6].includes(new Date(day(offset) + "T12:00:00Z").getUTCDay()),
+    ).length,
   );
   await call(
     "teacher",
@@ -580,15 +590,20 @@ test("leave routes to supervisors, prevents self approval and marks approved att
     { start_date: day(3), end_date: day(5), reason: "Overlap" },
     409,
   );
+  let previousWorkday = -1;
+  while (
+    [0, 6].includes(new Date(day(previousWorkday) + "T12:00:00Z").getUTCDay())
+  )
+    previousWorkday--;
   const conflict = await call("teacher", "/hr/leave", "POST", {
-    start_date: day(-1),
-    end_date: day(-1),
+    start_date: day(previousWorkday),
+    end_date: day(previousWorkday),
     reason: "Late application",
   });
   await insert(db, "staff_attendance", {
     school_id: school.id,
     staff_id: staff.id,
-    attendance_date: day(-1),
+    attendance_date: day(previousWorkday),
     status: "PRESENT",
     check_in_time: new Date().toISOString(),
   });
@@ -810,6 +825,80 @@ test("Paystack validates signature, tenant, amount, mode and duplicate callbacks
     10000,
   );
 });
+test("expanded reports and management alerts enforce scope and produce valid downloads", async () => {
+  for (const key of [
+    "attendance-summary",
+    "chronic-absence",
+    "discipline",
+    "complaints",
+    "maintenance",
+    "staff-performance",
+  ])
+    for (const format of ["csv", "xlsx", "pdf"]) {
+      const c = clients.admin,
+        response = await fetch(
+          `${base}/reports/${key}?from=${day(-90)}&to=${today}&format=${format}`,
+          { headers: { Cookie: c.cookie } },
+        ),
+        bytes = Buffer.from(await response.arrayBuffer());
+      assert.equal(response.status, 200, `${key}.${format}`);
+      assert.ok(bytes.length > 20);
+      if (format === "pdf")
+        assert.equal(bytes.subarray(0, 4).toString(), "%PDF");
+      if (format === "xlsx")
+        assert.equal(bytes.subarray(0, 2).toString(), "PK");
+    }
+  await call("parent", "/reports/complaints?format=csv", "GET", undefined, 403);
+  const term = await one(
+    db,
+    "SELECT id FROM terms WHERE school_id=$1 AND is_current",
+    [school.id],
+  );
+  await insert(db, "at_risk_flags", {
+    school_id: school.id,
+    student_id: child.id,
+    term_id: term.id,
+    class_id: cls.id,
+    reason: "GRADE_DECLINE",
+    detail: "Academic support needed.",
+  });
+  const subject = await insert(db, "subjects", {
+      school_id: school.id,
+      name: "Science",
+      code: "SCI",
+      department: "Science",
+    }),
+    assignment = await insert(db, "class_subjects", {
+      school_id: school.id,
+      class_id: cls.id,
+      subject_id: subject.id,
+      teacher_user_id: users.teacher.id,
+    });
+  await insert(db, "curriculum_topics", {
+    school_id: school.id,
+    class_subject_id: assignment.id,
+    term_id: term.id,
+    topic_name: "Matter",
+    planned_week: 1,
+    sequence_order: 1,
+  });
+  const alerts = await call("admin", "/alerts");
+  assert.ok(alerts.some((a) => a.category === "ACADEMIC"));
+  assert.ok(
+    alerts.some(
+      (a) => a.category === "CURRICULUM" && a.message.includes("Matter"),
+    ),
+  );
+  const academic = alerts.find((a) => a.category === "ACADEMIC");
+  assert.deepEqual(await call("parent", "/alerts"), []);
+  await call("parent", `/alerts/${academic.id}/acknowledge`, "PATCH", {}, 403);
+  await call("admin", `/alerts/${academic.id}/acknowledge`, "PATCH", {});
+  assert.equal(
+    (await one(db, "SELECT status FROM alerts WHERE id=$1", [academic.id]))
+      .status,
+    "ACKNOWLEDGED",
+  );
+});
 test("MFA recovery codes are hashed, consumed once, and cannot be reused", async () => {
   const mfa = await call("teacher", "/auth/mfa/setup", "POST", {});
   const otp = new OTPAuth.TOTP({
@@ -833,4 +922,253 @@ test("MFA recovery codes are hashed, consumed once, and cannot be reused", async
   await login("teacher");
   await call("teacher", "/auth/mfa/verify", "POST", { code: codes[0] }, 422);
   await call("teacher", "/auth/mfa/verify", "POST", { code: codes[1] });
+});
+
+test("working calendars exclude holidays, enforce annual limits and cancellations restore attendance", async () => {
+  // A fixed future week makes weekday/holiday expectations independent of today's weekday.
+  await call("hr", "/hr/calendar", "POST", {
+    weekdays: [1, 2, 3, 4, 5],
+    annual_leave_days: 3,
+    holidays: [{ date: "2030-01-08", name: "School holiday" }],
+    reason: "School leave calendar",
+  });
+  const estimate = await call(
+    "teacher",
+    "/hr/leave/estimate?from=2030-01-07&to=2030-01-13",
+  );
+  assert.deepEqual(estimate.dates, [
+    "2030-01-07",
+    "2030-01-09",
+    "2030-01-10",
+    "2030-01-11",
+  ]);
+  await call("parent", "/hr/calendar", "GET", undefined, 403);
+  const req = await call("teacher", "/hr/leave", "POST", {
+    start_date: "2030-01-07",
+    end_date: "2030-01-13",
+    reason: "Holiday adjusted leave",
+  });
+  await call("principal", `/hr/leave/${req.id}/decision`, "POST", {
+    status: "REVIEWED",
+    note: "Reviewed coverage",
+  });
+  await call(
+    "hr",
+    `/hr/leave/${req.id}/decision`,
+    "POST",
+    { status: "APPROVED", note: "Over balance" },
+    422,
+  );
+  await call("hr", "/hr/calendar", "POST", {
+    weekdays: [1, 2, 3, 4, 5],
+    annual_leave_days: 4,
+    holidays: [{ date: "2030-01-08", name: "School holiday" }],
+    reason: "Update agreed entitlement",
+  });
+  const absent = await insert(db, "staff_attendance", {
+    school_id: school.id,
+    staff_id: staff.id,
+    attendance_date: "2030-01-07",
+    status: "ABSENT",
+  });
+  await call("hr", `/hr/leave/${req.id}/decision`, "POST", {
+    status: "APPROVED",
+    note: "Approved within balance",
+  });
+  assert.equal(
+    (
+      await one(db, "SELECT working_days FROM leave_requests WHERE id=$1", [
+        req.id,
+      ])
+    ).working_days,
+    4,
+  );
+  await call(
+    "teacher",
+    `/hr/leave/${req.id}/cancel`,
+    "POST",
+    { reason: "Self cancel approval" },
+    403,
+  );
+  await call(
+    "foreign",
+    `/hr/leave/${req.id}/cancel`,
+    "POST",
+    { reason: "Wrong school" },
+    404,
+  );
+  await call("hr", `/hr/leave/${req.id}/cancel`, "POST", {
+    reason: "Dates changed; apply again",
+  });
+  assert.equal(
+    (
+      await one(db, "SELECT status FROM staff_attendance WHERE id=$1", [
+        absent.id,
+      ])
+    ).status,
+    "ABSENT",
+  );
+  assert.equal(
+    (
+      await one(
+        db,
+        "SELECT count(*)::int AS n FROM staff_attendance WHERE staff_id=$1 AND attendance_date BETWEEN '2030-01-07' AND '2030-01-13'",
+        [staff.id],
+      )
+    ).n,
+    1,
+  );
+  const replacement = await call("teacher", "/hr/leave", "POST", {
+    start_date: "2030-01-07",
+    end_date: "2030-01-13",
+    reason: "Replacement date request",
+  });
+  await call("teacher", `/hr/leave/${replacement.id}/cancel`, "POST", {
+    reason: "Withdraw pending request",
+  });
+  await call(
+    "hr",
+    `/hr/leave/${req.id}/decision`,
+    "POST",
+    { status: "APPROVED", note: "Replay approval" },
+    409,
+  );
+});
+
+test("private HR uploads verify format, preserve bytes and deny other schools and staff", async () => {
+  const bytes = Buffer.from("%PDF-1.4\nHR contract test fixture\n%%EOF");
+  async function upload(who, content) {
+    const form = new FormData();
+    form.set("category", "CONTRACT");
+    form.set("file", new Blob([content]), "contract.pdf");
+    const c = clients[who];
+    return fetch(`${base}/hr/staff/${staff.id}/documents`, {
+      method: "POST",
+      headers: { Cookie: c.cookie, "x-csrf-token": c.csrf },
+      body: form,
+    });
+  }
+  assert.equal((await upload("teacher", bytes)).status, 403);
+  assert.equal((await upload("foreign", bytes)).status, 404);
+  assert.equal(
+    (await upload("hr", Buffer.from("<script>bad</script>"))).status,
+    422,
+  );
+  const response = await upload("hr", bytes);
+  assert.equal(response.status, 200);
+  const doc = (await response.json()).data;
+  const download = await fetch(`${base}/hr/documents/${doc.id}`, {
+    headers: { Cookie: clients.hr.cookie },
+  });
+  assert.equal(download.status, 200);
+  assert.deepEqual(Buffer.from(await download.arrayBuffer()), bytes);
+  assert.match(download.headers.get("content-disposition"), /attachment/);
+  await call("foreign", `/hr/documents/${doc.id}`, "GET", undefined, 404);
+  await call("parent", `/hr/documents/${doc.id}`, "GET", undefined, 403);
+  const listed = await call("hr", `/hr/staff/${staff.id}/documents`);
+  assert.equal(listed.length, 1);
+  assert.equal(listed[0].storage_key, undefined);
+});
+
+test("review amendments retain immutable evidence and reject stale versions; survey drafts publish once", async () => {
+  const review = await one(
+      db,
+      "SELECT * FROM performance_reviews WHERE staff_id=$1",
+      [staff.id],
+    ),
+    body = {
+      revision: review.revision,
+      development_score: 85,
+      notes: "Additional training certificate recorded",
+      reason: "Late certificate provided",
+    };
+  await call("hr", `/hr/reviews/${review.id}/amend`, "POST", body);
+  const history = await call("hr", `/hr/reviews/${review.id}/history`);
+  assert.equal(history.length, 1);
+  assert.deepEqual(history[0].record.snapshot, review.snapshot);
+  assert.equal(Number(history[0].record.development_score), 70);
+  await call("hr", `/hr/reviews/${review.id}/amend`, "POST", body, 409);
+  await call(
+    "teacher",
+    `/hr/reviews/${review.id}/history`,
+    "GET",
+    undefined,
+    403,
+  );
+  await call(
+    "foreign",
+    `/hr/reviews/${review.id}/history`,
+    "GET",
+    undefined,
+    404,
+  );
+  const survey = await call("principal", "/surveys", "POST", {
+    title: "Draft check",
+    questions: ["Teaching"],
+    start_date: day(-1),
+    end_date: day(7),
+    published: false,
+  });
+  const edit = {
+    title: "Published check",
+    questions: ["Teaching quality", "Communication"],
+    start_date: today,
+    end_date: day(7),
+    published: true,
+    reason: "Questionnaire reviewed",
+  };
+  await call("principal", `/surveys/${survey.id}`, "PATCH", edit);
+  await call("principal", `/surveys/${survey.id}`, "PATCH", edit, 409);
+  assert.ok(
+    (await call("parent", "/surveys")).some(
+      (s) => s.id === survey.id && s.questions.length === 2,
+    ),
+  );
+});
+
+test("historical model imports are tenant-scoped, validated, auditable and never activate predictions", async () => {
+  const input = {
+    kind: "REVENUE",
+    name: "Observed old receipts",
+    source_note:
+      "Finance ledger monthly totals verified for school test fixture",
+    historical_observations_confirmed: true,
+    records: [{ month: "2020-01", value: 10000 }],
+  };
+  await call("parent", "/intelligence/datasets", "POST", input, 403);
+  await call(
+    "admin",
+    "/intelligence/datasets",
+    "POST",
+    {
+      ...input,
+      records: [...input.records, { month: "2020-03", value: 30000 }],
+    },
+    422,
+  );
+  const d = await call("admin", "/intelligence/datasets", "POST", input);
+  assert.equal(d.checksum.length, 64);
+  await call(
+    "foreign",
+    `/intelligence/datasets/${d.id}/evaluate`,
+    "POST",
+    {},
+    404,
+  );
+  const run = await call(
+    "admin",
+    `/intelligence/datasets/${d.id}/evaluate`,
+    "POST",
+    {},
+  );
+  assert.equal(run.status, "INSUFFICIENT_DATA");
+  assert.equal(run.report.production_enabled, false);
+  assert.equal(
+    (await call("foreign", "/intelligence/models")).datasets.length,
+    0,
+  );
+  assert.equal(
+    (await call("admin", "/intelligence/models")).runs[0].artifact,
+    undefined,
+  );
 });

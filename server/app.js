@@ -9,12 +9,15 @@ import { academicRoutes } from "./academic-routes.js";
 import { operationsRoutes } from "./operations-routes.js";
 import { paymentRoutes, paystackWebhook } from "./paystack.js";
 import { intelligenceRoutes } from "./intelligence.js";
+import { refinementRoutes } from "./refinement-routes.js";
+import { modelRoutes } from "./model-routes.js";
 
 export async function createApp(db, options = {}) {
   await seedRoles(db);
   const app = express();
-  const proxyHops=Number(process.env.TRUST_PROXY_HOPS||0);
-  if(Number.isInteger(proxyHops)&&proxyHops>0&&proxyHops<=3)app.set('trust proxy',proxyHops);
+  const proxyHops = Number(process.env.TRUST_PROXY_HOPS || 0);
+  if (Number.isInteger(proxyHops) && proxyHops > 0 && proxyHops <= 3)
+    app.set("trust proxy", proxyHops);
   app.disable("x-powered-by");
   app.use(
     helmet({
@@ -72,8 +75,10 @@ export async function createApp(db, options = {}) {
     coreRoutes(db, options),
     academicRoutes(db),
     operationsRoutes(db),
+    refinementRoutes(db, options),
     paymentRoutes(db, options),
     intelligenceRoutes(db),
+    modelRoutes(db),
     reportingRoutes(db),
   );
   app.use("/api", (req, res) =>

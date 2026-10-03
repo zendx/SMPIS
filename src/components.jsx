@@ -1,6 +1,8 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useId, useRef, useState } from "react";
 import {
   X,
+  Eye,
+  EyeOff,
   ChevronRight,
   Search,
   Plus,
@@ -199,6 +201,7 @@ export function Form({
   submit = "Save",
   children,
 }) {
+  const idPrefix = useId();
   const [values, setValues] = useState(() =>
       Object.fromEntries(
         fields.map((f) => [
@@ -208,7 +211,8 @@ export function Form({
       ),
     ),
     [error, setError] = useState(""),
-    [busy, setBusy] = useState(false);
+    [busy, setBusy] = useState(false),
+    [visiblePasswords, setVisiblePasswords] = useState({});
   async function save(e) {
     e.preventDefault();
     setBusy(true);
@@ -224,67 +228,118 @@ export function Form({
   return (
     <form onSubmit={save}>
       <div className="form-grid">
-        {fields.map((f) => (
-          <label
-            className={`field ${f.wide ? "wide" : ""} ${f.type === "checkbox" ? "check-field" : ""}`}
-            key={f.name}
-          >
-            <span>
-              {f.label}
-              {f.required !== false && f.type !== "checkbox" && <b> *</b>}
-            </span>
-            {f.options ? (
-              <select
-                value={values[f.name]}
-                onChange={(e) =>
-                  setValues({ ...values, [f.name]: e.target.value })
-                }
-                required={f.required !== false}
-              >
-                <option value="">Select {f.label.toLowerCase()}</option>
-                {f.options.map((o) => (
-                  <option
-                    key={typeof o === "object" ? o.value : o}
-                    value={typeof o === "object" ? o.value : o}
-                  >
-                    {typeof o === "object" ? o.label : human(o)}
-                  </option>
-                ))}
-              </select>
-            ) : f.type === "textarea" ? (
-              <textarea
-                rows={3}
-                value={values[f.name]}
-                onChange={(e) =>
-                  setValues({ ...values, [f.name]: e.target.value })
-                }
-                required={f.required !== false}
-              />
-            ) : (
-              <input
-                type={f.type || "text"}
-                value={f.type === "checkbox" ? undefined : values[f.name]}
-                checked={f.type === "checkbox" ? !!values[f.name] : undefined}
-                onChange={(e) =>
-                  setValues({
-                    ...values,
-                    [f.name]:
-                      f.type === "checkbox" ? e.target.checked : e.target.value,
-                  })
-                }
-                required={f.type !== "checkbox" && f.required !== false}
-                min={f.min}
-                max={f.max}
-                step={f.step}
-                minLength={f.minLength}
-                maxLength={f.maxLength}
-                placeholder={f.placeholder}
-                autoComplete={f.autoComplete}
-              />
-            )}{" "}
-            {f.hint && <small>{f.hint}</small>}
-          </label>
-        ))}
+        {fields.map((f) =>
+          f.type === "password" ? (
+            <div className={`field ${f.wide ? "wide" : ""}`} key={f.name}>
+              <label htmlFor={`${idPrefix}-${f.name}`}>
+                {f.label}
+                {f.required !== false && <b> *</b>}
+              </label>
+              <div className="password-input-wrap">
+                <input
+                  id={`${idPrefix}-${f.name}`}
+                  type={visiblePasswords[f.name] ? "text" : "password"}
+                  value={values[f.name]}
+                  onChange={(e) =>
+                    setValues({ ...values, [f.name]: e.target.value })
+                  }
+                  required={f.required !== false}
+                  minLength={f.minLength}
+                  maxLength={f.maxLength}
+                  placeholder={f.placeholder}
+                  autoComplete={f.autoComplete}
+                />
+                <button
+                  type="button"
+                  className="password-toggle"
+                  aria-label={
+                    visiblePasswords[f.name] ? "Hide password" : "Show password"
+                  }
+                  aria-pressed={!!visiblePasswords[f.name]}
+                  aria-controls={`${idPrefix}-${f.name}`}
+                  title={
+                    visiblePasswords[f.name] ? "Hide password" : "Show password"
+                  }
+                  onClick={() =>
+                    setVisiblePasswords((shown) => ({
+                      ...shown,
+                      [f.name]: !shown[f.name],
+                    }))
+                  }
+                >
+                  {visiblePasswords[f.name] ? (
+                    <EyeOff size={18} />
+                  ) : (
+                    <Eye size={18} />
+                  )}
+                </button>
+              </div>
+              {f.hint && <small>{f.hint}</small>}
+            </div>
+          ) : (
+            <label
+              className={`field ${f.wide ? "wide" : ""} ${f.type === "checkbox" ? "check-field" : ""}`}
+              key={f.name}
+            >
+              <span>
+                {f.label}
+                {f.required !== false && f.type !== "checkbox" && <b> *</b>}
+              </span>
+              {f.options ? (
+                <select
+                  value={values[f.name]}
+                  onChange={(e) =>
+                    setValues({ ...values, [f.name]: e.target.value })
+                  }
+                  required={f.required !== false}
+                >
+                  <option value="">Select {f.label.toLowerCase()}</option>
+                  {f.options.map((o) => (
+                    <option
+                      key={typeof o === "object" ? o.value : o}
+                      value={typeof o === "object" ? o.value : o}
+                    >
+                      {typeof o === "object" ? o.label : human(o)}
+                    </option>
+                  ))}
+                </select>
+              ) : f.type === "textarea" ? (
+                <textarea
+                  rows={3}
+                  value={values[f.name]}
+                  onChange={(e) =>
+                    setValues({ ...values, [f.name]: e.target.value })
+                  }
+                  required={f.required !== false}
+                />
+              ) : (
+                <input
+                  type={f.type || "text"}
+                  value={f.type === "checkbox" ? undefined : values[f.name]}
+                  checked={f.type === "checkbox" ? !!values[f.name] : undefined}
+                  onChange={(e) =>
+                    setValues({
+                      ...values,
+                      [f.name]:
+                        f.type === "checkbox"
+                          ? e.target.checked
+                          : e.target.value,
+                    })
+                  }
+                  required={f.type !== "checkbox" && f.required !== false}
+                  min={f.min}
+                  max={f.max}
+                  step={f.step}
+                  minLength={f.minLength}
+                  maxLength={f.maxLength}
+                  placeholder={f.placeholder}
+                  autoComplete={f.autoComplete}
+                />
+              )}{" "}
+              {f.hint && <small>{f.hint}</small>}
+            </label>
+          ),
+        )}
       </div>
       {children}
       {error && (

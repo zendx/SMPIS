@@ -38,7 +38,7 @@ import { applicationFields } from "./pages/students";
 import { useData } from "./hooks";
 import { Quality, People, Facilities } from "./pages/operations";
 import { Intelligence, Platform } from "./pages/intelligence";
-import {ManagementAlerts} from './pages/alerts';
+import { ManagementAlerts } from "./pages/alerts";
 
 function PublicApplication({ code }) {
   const q = useData(
@@ -309,7 +309,9 @@ function App() {
     [setup, setSetup] = useState(false),
     [loading, setLoading] = useState(true),
     [config, setConfig] = useState(null),
-    [page, setPage] = useState(location.hash.slice(1) || "dashboard"),
+    [page, setPage] = useState(
+      location.hash.slice(1).split("/")[0] || "dashboard",
+    ),
     [term, setTerm] = useState(""),
     [mobile, setMobile] = useState(false),
     [toast, setToast] = useState(""),
@@ -335,7 +337,9 @@ function App() {
     ["finance", "Finance", Wallet, can("finance.read") || can("finance.own")],
     [
       "academics",
-      can("reports.academic.own") ? "Academic results" : "Academics",
+      can("reports.academic.own") && !can("academics.read")
+        ? "Academic results"
+        : "Academics",
       GraduationCap,
       can("academics.read") ||
         can("analytics.summary") ||
@@ -369,7 +373,18 @@ function App() {
       ].some(can),
     ],
     ["administration", "Administration", Settings, true],
-    ['alerts','Management alerts',Bell,['finance.read','discipline.manage','complaints.manage','facilities.manage','academics.manage'].some(can)],
+    [
+      "alerts",
+      "Management alerts",
+      Bell,
+      [
+        "finance.read",
+        "discipline.manage",
+        "complaints.manage",
+        "facilities.manage",
+        "academics.manage",
+      ].some(can),
+    ],
     [
       "quality",
       "School experience",
@@ -440,7 +455,8 @@ function App() {
       go("finance");
   }, [session]);
   useEffect(() => {
-    const fn = () => setPage(location.hash.slice(1) || "dashboard");
+    const fn = () =>
+      setPage(location.hash.slice(1).split("/")[0] || "dashboard");
     window.addEventListener("hashchange", fn);
     return () => window.removeEventListener("hashchange", fn);
   }, []);
@@ -453,8 +469,8 @@ function App() {
     )
       go(nav[0]?.[0] || "administration");
   }, [session, page]);
-  function go(p) {
-    location.hash = p;
+  function go(p, section) {
+    location.hash = section ? `${p}/${section}` : p;
     setPage(p);
     setMobile(false);
   }

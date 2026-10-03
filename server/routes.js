@@ -1,5 +1,9 @@
 import express from "express";
 import multer from "multer";
+import {
+  preserveBeforeTransfer,
+  rosterAfterTransfer,
+} from "./history-service.js";
 import path from "node:path";
 import { mkdir, writeFile } from "node:fs/promises";
 import { one, rows, insert, audit } from "./db.js";
@@ -357,11 +361,16 @@ export function coreRoutes(db, { dataDir = "./data" } = {}) {
           fail(422, "Use admissions to enroll a new student.");
         const cls = await one(
           tx,
-          "SELECT * FROM classes WHERE school_id=$1 AND id=$2 FOR UPDATE",
+          "SELECT * FROM classes WHERE school_id=$1 AND id=$2",
           [req.user.school_id, b.class_id],
         );
         if (!cls) fail(404, "Class not found.");
         if (s.class_id === cls.id) return;
+        await tx.query(
+          "SELECT id FROM classes WHERE school_id=$1 AND id=ANY($2::int[]) ORDER BY id FOR UPDATE",
+          [req.user.school_id, [s.class_id, cls.id].filter(Boolean)],
+        );
+        await preserveBeforeTransfer(tx, req.user, s);
         const count = await one(
           tx,
           "SELECT count(*)::int AS n FROM students WHERE class_id=$1 AND status='ENROLLED'",
@@ -385,6 +394,7 @@ export function coreRoutes(db, { dataDir = "./data" } = {}) {
             (await currentSchool(tx, req.user)).timezone,
           ).date,
         });
+        await rosterAfterTransfer(tx, req.user, s, cls.id);
         await audit(
           tx,
           req.user,
@@ -783,6 +793,10 @@ export function coreRoutes(db, { dataDir = "./data" } = {}) {
       const school = await currentSchool(db, req.user),
         clock = localClock(school.timezone);
       const result = await db.transaction(async (tx) => {
+        await tx.query(
+          "SELECT id FROM staff WHERE school_id=$1 AND id=$2 FOR UPDATE",
+          [req.user.school_id, staff.id],
+        );
         let record;
         if (action === "check-in") {
           if (
@@ -838,13 +852,28 @@ export function coreRoutes(db, { dataDir = "./data" } = {}) {
         })
         .parse(req.body);
       await schoolRecord(db, req.user, "staff", b.staff_id);
-      const s = await insert(db, "staff_attendance", {
-        school_id: req.user.school_id,
-        staff_id: b.staff_id,
-        attendance_date: b.date,
-        status: b.status,
+      const s = await db.transaction(async (tx) => {
+        await tx.query(
+          "SELECT id FROM staff WHERE school_id=$1 AND id=$2 FOR UPDATE",
+          [req.user.school_id, b.staff_id],
+        );
+        const record = await insert(tx, "staff_attendance", {
+          school_id: req.user.school_id,
+          staff_id: b.staff_id,
+          attendance_date: b.date,
+          status: b.status,
+        });
+        await audit(
+          tx,
+          req.user,
+          "staff_attendance",
+          record.id,
+          "CREATE",
+          null,
+          record,
+        );
+        return record;
       });
-      await audit(db, req.user, "staff_attendance", s.id, "CREATE", null, s);
       ok(res, s);
     },
   );
