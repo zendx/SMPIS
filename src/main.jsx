@@ -36,9 +36,7 @@ import {
 import "./styles.css";
 import { applicationFields } from "./pages/students";
 import { useData } from "./hooks";
-import { Quality, People, Facilities } from "./pages/operations";
-import { Intelligence, Platform } from "./pages/intelligence";
-import { ManagementAlerts } from "./pages/alerts";
+import {Quality,People,Facilities} from './pages/operations';
 
 function PublicApplication({ code }) {
   const q = useData(
@@ -373,30 +371,9 @@ function App() {
       ].some(can),
     ],
     ["administration", "Administration", Settings, true],
-    [
-      "alerts",
-      "Management alerts",
-      Bell,
-      [
-        "finance.read",
-        "discipline.manage",
-        "complaints.manage",
-        "facilities.manage",
-        "academics.manage",
-      ].some(can),
-    ],
-    [
-      "quality",
-      "School experience",
-      ShieldCheck,
-      can("operations.staff") ||
-        can("experience.own") ||
-        can("operations.summary"),
-    ],
-    ["people", "People & HR", Users, can("operations.staff")],
-    ["facilities", "Facilities & assets", School, can("operations.staff")],
-    ["intelligence", "Intelligence", FileBarChart, can("intelligence.read")],
-    ["platform", "Schools", School, session?.user.platform_operator],
+    ['quality','School experience',ShieldCheck,can('operations.staff')||can('experience.own')||can('operations.summary')],
+    ['people','People & HR',Users,can('operations.staff')],
+    ['facilities','Facilities & assets',School,can('operations.staff')],
   ].filter(
     (n) =>
       n[3] && (!session?.user.mfa_setup_required || n[0] === "administration"),
@@ -443,6 +420,16 @@ function App() {
   useEffect(() => {
     if (session && !session.mfa_required)
       reloadConfig().catch((e) => setFatal(e.message));
+  }, [session]);
+  useEffect(() => {
+    if (
+      session &&
+      !session.mfa_required &&
+      !session.user.mfa_setup_required &&
+      new URLSearchParams(location.search).has("payment_reference") &&
+      (can("finance.read") || can("finance.own"))
+    )
+      go("finance");
   }, [session]);
   useEffect(() => {
     if (

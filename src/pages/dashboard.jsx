@@ -14,7 +14,11 @@ import {
 import { useData } from "../hooks";
 import { patch } from "../api";
 import { OperationsMetrics } from "./operations";
+<<<<<<< HEAD
 import { openAlert } from "./alerts";
+=======
+import {openAlert} from './alerts';
+>>>>>>> c19166aa56d989729a7ccae9d3d82d61c7c8f226
 import {
   PageHead,
   Button,
@@ -274,7 +278,11 @@ export function Dashboard({ user, config, term, can, money, go, notify }) {
                     <small>{a.category}</small>
                     <button
                       className="alert-link"
+<<<<<<< HEAD
                       onClick={() => openAlert(a, go)}
+=======
+                      onClick={() => openAlert(a,go)}
+>>>>>>> c19166aa56d989729a7ccae9d3d82d61c7c8f226
                     >
                       {a.message}
                     </button>

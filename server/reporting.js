@@ -17,7 +17,7 @@ import {
   refreshAlerts,
 } from "./services.js";
 import { id, date } from "./validation.js";
-import { refreshOperationAlerts } from "./operations-service.js";
+import { refreshOperationAlerts } from './operations-service.js';
 
 export function reportingRoutes(db) {
   const r = express.Router();
@@ -104,7 +104,11 @@ export function reportingRoutes(db) {
     });
   });
   r.get("/alerts", async (req, res) => {
+<<<<<<< HEAD
     await refreshOperationAlerts(db, req.user.school_id);
+=======
+    await refreshOperationAlerts(db,req.user.school_id);
+>>>>>>> c19166aa56d989729a7ccae9d3d82d61c7c8f226
     const cats = [];
     if (permitted(req.user, "attendance.read") && req.user.role !== "TEACHER")
       cats.push("ATTENDANCE");
@@ -112,8 +116,13 @@ export function reportingRoutes(db) {
     if (permitted(req.user, "discipline.manage")) cats.push("DISCIPLINE");
     if (permitted(req.user, "complaints.manage")) cats.push("PARENT");
     if (permitted(req.user, "facilities.manage")) cats.push("FACILITIES");
+<<<<<<< HEAD
     if (permitted(req.user, "academics.manage")) cats.push("ACADEMIC");
     if (permitted(req.user, "curriculum.manage")) cats.push("CURRICULUM");
+=======
+    if (permitted(req.user, 'academics.manage')) cats.push('ACADEMIC');
+    if (permitted(req.user, 'curriculum.manage')) cats.push('CURRICULUM');
+>>>>>>> c19166aa56d989729a7ccae9d3d82d61c7c8f226
     res.json({
       data: await rows(
         db,
@@ -130,6 +139,7 @@ export function reportingRoutes(db) {
       id.parse(req.params.id),
     );
     if (
+<<<<<<< HEAD
       ([
         "DISCIPLINE",
         "PARENT",
@@ -137,14 +147,22 @@ export function reportingRoutes(db) {
         "ACADEMIC",
         "CURRICULUM",
       ].includes(alert.category) &&
+=======
+      (["DISCIPLINE", "PARENT", "FACILITIES",'ACADEMIC','CURRICULUM'].includes(alert.category) &&
+>>>>>>> c19166aa56d989729a7ccae9d3d82d61c7c8f226
         !permitted(
           req.user,
           {
             DISCIPLINE: "discipline.manage",
             PARENT: "complaints.manage",
             FACILITIES: "facilities.manage",
+<<<<<<< HEAD
             ACADEMIC: "academics.manage",
             CURRICULUM: "curriculum.manage",
+=======
+            ACADEMIC:'academics.manage',
+            CURRICULUM:'curriculum.manage',
+>>>>>>> c19166aa56d989729a7ccae9d3d82d61c7c8f226
           }[alert.category],
         )) ||
       (alert.category === "FINANCE" && !permitted(req.user, "finance.read")) ||

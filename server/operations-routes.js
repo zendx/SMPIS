@@ -1,5 +1,4 @@
 import express from "express";
-import { approveLeave } from "./history-service.js";
 import { one, rows, insert, audit } from "./db.js";
 import {
   fail,
@@ -690,7 +689,11 @@ export function operationsRoutes(db) {
           : [],
         leave: await rows(
           db,
+<<<<<<< HEAD
           `SELECT l.*,s.first_name,s.last_name,s.user_id FROM leave_requests l JOIN staff s ON s.id=l.staff_id WHERE l.school_id=$1${manage ? "" : " AND (s.user_id=$2 OR l.supervisor_user_id=$2)"} ORDER BY l.id DESC`,
+=======
+          `SELECT l.*,s.first_name,s.last_name FROM leave_requests l JOIN staff s ON s.id=l.staff_id WHERE l.school_id=$1${manage ? "" : " AND (s.user_id=$2 OR l.supervisor_user_id=$2)"} ORDER BY l.id DESC`,
+>>>>>>> c19166aa56d989729a7ccae9d3d82d61c7c8f226
           manage ? [u.school_id] : [u.school_id, u.id],
         ),
         reviews: manage
@@ -938,7 +941,11 @@ export function operationsRoutes(db) {
         if (
           await one(
             tx,
+<<<<<<< HEAD
             "SELECT id FROM leave_requests WHERE staff_id=$1 AND status<>'REJECTED' AND cancelled_at IS NULL AND start_date<=$3 AND end_date>=$2",
+=======
+            "SELECT id FROM leave_requests WHERE staff_id=$1 AND status<>'REJECTED' AND start_date<=$3 AND end_date>=$2",
+>>>>>>> c19166aa56d989729a7ccae9d3d82d61c7c8f226
             [s.id, b.start_date, b.end_date],
           )
         )
@@ -981,11 +988,15 @@ export function operationsRoutes(db) {
           [u.school_id, id.parse(req.params.id)],
         );
         if (!l) fail(404, "Leave request not found.");
+<<<<<<< HEAD
         const s = await one(
           tx,
           "SELECT * FROM staff WHERE school_id=$1 AND id=$2 FOR UPDATE",
           [u.school_id, l.staff_id],
         );
+=======
+        const s = await schoolRecord(tx, u, "staff", l.staff_id);
+>>>>>>> c19166aa56d989729a7ccae9d3d82d61c7c8f226
         if (s.user_id === u.id)
           fail(403, "You cannot approve or review your own leave.");
         if (
@@ -998,13 +1009,36 @@ export function operationsRoutes(db) {
             "Supervisor review and HR decisions use separate permissions.",
           );
         if (
+<<<<<<< HEAD
           l.cancelled_at ||
+=======
+>>>>>>> c19166aa56d989729a7ccae9d3d82d61c7c8f226
           ["APPROVED", "REJECTED"].includes(l.status) ||
           (b.status === "REVIEWED" && l.status !== "REQUESTED") ||
           (b.status === "APPROVED" && l.status !== "REVIEWED")
         )
           fail(409, "This leave request is not at the required stage.");
+<<<<<<< HEAD
         if (b.status === "APPROVED") await approveLeave(tx, u, l);
+=======
+        if (b.status === "APPROVED") {
+          if (
+            await one(
+              tx,
+              "SELECT id FROM staff_attendance WHERE school_id=$1 AND staff_id=$2 AND attendance_date BETWEEN $3 AND $4 AND (check_in_time IS NOT NULL OR status NOT IN ('ABSENT','LEAVE'))",
+              [u.school_id, s.id, l.start_date, l.end_date],
+            )
+          )
+            fail(
+              409,
+              "Attendance already exists in this range. Resolve the conflicting records before approving leave.",
+            );
+          await tx.query(
+            "INSERT INTO staff_attendance(school_id,staff_id,attendance_date,status) SELECT $1,$2,d::date,'LEAVE' FROM generate_series($3::date,$4::date,'1 day'::interval) d ON CONFLICT(staff_id,attendance_date) DO UPDATE SET status='LEAVE'",
+            [u.school_id, s.id, l.start_date, l.end_date],
+          );
+        }
+>>>>>>> c19166aa56d989729a7ccae9d3d82d61c7c8f226
         await tx.query(
           "UPDATE leave_requests SET status=$2,decision_note=$3,decided_by=$4 WHERE id=$1",
           [l.id, b.status, b.note, u.id],

@@ -154,6 +154,7 @@ export async function refreshOperationAlerts(db, schoolId) {
         ? `Complaint CASE-${c.id} is past its response target.`
         : `Urgent maintenance CASE-${c.id} needs attention.`,
     ]);
+<<<<<<< HEAD
   for (const flag of await rows(
     db,
     "SELECT f.id,f.detail FROM at_risk_flags f JOIN terms t ON t.id=f.term_id WHERE f.school_id=$1 AND f.status='OPEN' AND t.is_current",
@@ -184,6 +185,11 @@ export async function refreshOperationAlerts(db, schoolId) {
     "ACADEMIC",
     "CURRICULUM",
   ])
+=======
+  for(const flag of await rows(db,"SELECT f.id,f.detail FROM at_risk_flags f JOIN terms t ON t.id=f.term_id WHERE f.school_id=$1 AND f.status='OPEN' AND t.is_current",[schoolId]))candidates.push(['ACADEMIC','HIGH',flag.id,flag.detail]);
+  for(const term of await rows(db,'SELECT id FROM terms WHERE school_id=$1 AND is_current',[schoolId]))for(const topic of await curriculumRows(db,{school_id:schoolId,role:'SUPER_ADMIN'},term.id))if(topic.behind)candidates.push(['CURRICULUM','NORMAL',topic.id,`${topic.class_name} · ${topic.subject_name}: ${topic.topic_name} is behind its planned week.`]);
+  for (const category of ["DISCIPLINE", "PARENT", "FACILITIES",'ACADEMIC','CURRICULUM'])
+>>>>>>> c19166aa56d989729a7ccae9d3d82d61c7c8f226
     await db.query(
       "UPDATE alerts SET status='RESOLVED',updated_at=now() WHERE school_id=$1 AND category=$2 AND NOT(entity_id=ANY($3::int[])) AND status<>'RESOLVED'",
       [

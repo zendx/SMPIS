@@ -15,9 +15,8 @@ import { modelRoutes } from "./model-routes.js";
 export async function createApp(db, options = {}) {
   await seedRoles(db);
   const app = express();
-  const proxyHops = Number(process.env.TRUST_PROXY_HOPS || 0);
-  if (Number.isInteger(proxyHops) && proxyHops > 0 && proxyHops <= 3)
-    app.set("trust proxy", proxyHops);
+  const proxyHops=Number(process.env.TRUST_PROXY_HOPS||0);
+  if(Number.isInteger(proxyHops)&&proxyHops>0&&proxyHops<=3)app.set('trust proxy',proxyHops);
   app.disable("x-powered-by");
   app.use(
     helmet({
@@ -75,7 +74,10 @@ export async function createApp(db, options = {}) {
     coreRoutes(db, options),
     academicRoutes(db),
     operationsRoutes(db),
+<<<<<<< HEAD
     refinementRoutes(db, options),
+=======
+>>>>>>> c19166aa56d989729a7ccae9d3d82d61c7c8f226
     paymentRoutes(db, options),
     intelligenceRoutes(db),
     modelRoutes(db),
