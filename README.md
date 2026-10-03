@@ -67,7 +67,7 @@ The approved academic defaults are A ≥70, B ≥60, C ≥50, D ≥45, E ≥40 a
 
 ## Security and sensitive data
 
-SMPIS uses individual accounts, server-enforced role and school access, hashed passwords, HttpOnly session cookies, CSRF protection, audit events and administrator MFA. Keep school records, uploaded documents, database files, backups and environment secrets private. Student records may contain medical and other sensitive information.
+SMPIS uses individual accounts, server-enforced role and school access, hashed passwords, HttpOnly session cookies, CSRF protection, audit events and required MFA for the initial Super Admin. Keep school records, uploaded documents, database files, backups and environment secrets private. Student records may contain medical and other sensitive information.
 
 Application-level encryption for sensitive database fields is not implemented. For production, configure appropriate encryption at rest and in transit, restrict server and backup access, and review the school's data-retention and recovery policies before importing real records.
 
