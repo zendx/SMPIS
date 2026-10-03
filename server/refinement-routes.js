@@ -1,7 +1,6 @@
 import express from "express";
 import multer from "multer";
 import path from "node:path";
-import { mkdir, writeFile, unlink } from "node:fs/promises";
 import { z, id, text, date } from "./validation.js";
 import { one, rows, insert, audit } from "./db.js";
 import { fail, requirePermission, permitted, token } from "./security.js";
@@ -488,11 +487,8 @@ export function refinementRoutes(db, options = {}) {
                 ? "image/jpeg"
                 : null;
       if (!mime) fail(422, "Only PDF, PNG and JPEG documents are supported.");
-      const key = token(),
-        dir = path.resolve(options.dataDir || "data", "documents"),
-        filename = path.join(dir, key);
-      await mkdir(dir, { recursive: true });
-      await writeFile(filename, f.buffer, { flag: "wx" });
+      const key = token();
+      await options.documentStorage.put(key, f.buffer);
       let doc;
       try {
         doc = await db.transaction(async (tx) => {
@@ -517,7 +513,7 @@ export function refinementRoutes(db, options = {}) {
           return d;
         });
       } catch (e) {
-        await unlink(filename);
+        await options.documentStorage.delete(key);
         throw e;
       }
       ok(res, { id: doc.id });
@@ -536,10 +532,8 @@ export function refinementRoutes(db, options = {}) {
       await audit(db, req.user, "staff_documents", d.id, "DOWNLOAD");
       res
         .type(d.mime)
-        .download(
-          path.resolve(options.dataDir || "data", "documents", d.storage_key),
-          d.name,
-        );
+        .attachment(d.name)
+        .send(await options.documentStorage.get(d.storage_key));
     },
   );
   r.get(

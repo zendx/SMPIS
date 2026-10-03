@@ -5,7 +5,6 @@ import {
   rosterAfterTransfer,
 } from "./history-service.js";
 import path from "node:path";
-import { mkdir, writeFile } from "node:fs/promises";
 import { one, rows, insert, audit } from "./db.js";
 import {
   fail,
@@ -39,7 +38,10 @@ import {
   invoiceList,
 } from "./services.js";
 
-export function coreRoutes(db, { dataDir = "./data" } = {}) {
+export function coreRoutes(
+  db,
+  { dataDir = "./data", documentStorage } = {},
+) {
   const r = express.Router(),
     allow =
       (...permissions) =>
@@ -528,10 +530,8 @@ export function coreRoutes(db, { dataDir = "./data" } = {}) {
                 ? "image/jpeg"
                 : null;
       if (!mime) fail(422, "Only PDF, PNG and JPEG documents are supported.");
-      const key = token(),
-        dir = path.resolve(dataDir, "documents");
-      await mkdir(dir, { recursive: true });
-      await writeFile(path.join(dir, key), f.buffer, { flag: "wx" });
+      const key = token();
+      await documentStorage.put(key, f.buffer);
       const doc = await insert(db, "student_documents", {
         school_id: req.user.school_id,
         student_id: s.id,
@@ -562,8 +562,10 @@ export function coreRoutes(db, { dataDir = "./data" } = {}) {
         id.parse(req.params.id),
       );
       await studentAccess(db, req.user, d.student_id);
-      res.type(d.mime);
-      res.download(path.resolve(dataDir, "documents", d.storage_key), d.name);
+      res
+        .type(d.mime)
+        .attachment(d.name)
+        .send(await documentStorage.get(d.storage_key));
     },
   );
 

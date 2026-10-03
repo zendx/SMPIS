@@ -24,6 +24,7 @@ const password = "Browser-operations-pass!",
 for (const [name, role] of [
   ["admin", "SUPER_ADMIN"],
   ["teacher", "TEACHER"],
+  ["unassigned_teacher", "TEACHER"],
   ["parent", "PARENT"],
 ])
   users[name] = await insert(db, "users", {
@@ -31,6 +32,7 @@ for (const [name, role] of [
     name: {
       admin: "Grace Adeyemi",
       teacher: "Mariam Bello",
+      unassigned_teacher: "Tunde Okafor",
       parent: "Ada Obi",
     }[name],
     role,
@@ -106,11 +108,7 @@ const click = (label) =>
 async function login(who) {
   await page.goto(origin);
   await field("Email address").fill(`${who}@opsbrowser.test`);
-<<<<<<< HEAD
   await page.getByLabel(/^Password \*$/).fill(password);
-=======
-  await field("Password").fill(password);
->>>>>>> c19166aa56d989729a7ccae9d3d82d61c7c8f226
   await click("Sign in to your workspace");
   await page.locator("nav").waitFor();
 }
@@ -221,6 +219,25 @@ try {
     .getByRole("button", { name: "Create survey", exact: true })
     .click();
   await closed();
+  await logout();
+  await login("teacher");
+  await page
+    .getByRole("heading", { name: "Teacher workspace", exact: true })
+    .waitFor();
+  await page.getByRole("cell", { name: "Grade 5A", exact: true }).waitFor();
+  await page.reload();
+  await page
+    .getByRole("heading", { name: "Teacher workspace", exact: true })
+    .waitFor();
+  await page.getByRole("cell", { name: "Grade 5A", exact: true }).waitFor();
+  await logout();
+  await login("unassigned_teacher");
+  await page
+    .getByRole("heading", { name: "Teacher workspace", exact: true })
+    .waitFor();
+  await page
+    .getByText("No classes or subjects are assigned yet", { exact: true })
+    .waitFor();
   await logout();
   await login("teacher");
   await nav("People & HR");

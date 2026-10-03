@@ -22,6 +22,7 @@ import { api, get, post, setCsrf } from "./api";
 import { Form, Button, Loading, human } from "./components";
 import {
   Dashboard,
+  TeacherWorkspace,
   Students,
   Admissions,
   Attendance,
@@ -32,6 +33,9 @@ import {
   Notifications,
   Academics,
   Curriculum,
+  Intelligence,
+  Platform,
+  ManagementAlerts,
 } from "./pages";
 import "./styles.css";
 import { applicationFields } from "./pages/students";
@@ -310,6 +314,7 @@ function App() {
     [page, setPage] = useState(
       location.hash.slice(1).split("/")[0] || "dashboard",
     ),
+    [initialRoute, setInitialRoute] = useState(true),
     [term, setTerm] = useState(""),
     [mobile, setMobile] = useState(false),
     [toast, setToast] = useState(""),
@@ -319,6 +324,12 @@ function App() {
     session?.user.permissions.includes(p);
   const nav = [
     [
+      "teaching",
+      "Teacher workspace",
+      BookOpen,
+      session?.user.role === "TEACHER",
+    ],
+    [
       "dashboard",
       "Overview",
       LayoutDashboard,
@@ -326,7 +337,11 @@ function App() {
     ],
     [
       "students",
-      session?.user.role === "PARENT" ? "My children" : "Students",
+      session?.user.role === "PARENT"
+        ? "My children"
+        : session?.user.role === "TEACHER"
+          ? "My learners"
+          : "Students",
       GraduationCap,
       can("students.read") || can("children.read"),
     ],
@@ -374,6 +389,20 @@ function App() {
     ['quality','School experience',ShieldCheck,can('operations.staff')||can('experience.own')||can('operations.summary')],
     ['people','People & HR',Users,can('operations.staff')],
     ['facilities','Facilities & assets',School,can('operations.staff')],
+    ["intelligence", "Intelligence", ArrowUpRight, can("intelligence.read")],
+    ["platform", "Schools", School, can("*")],
+    [
+      "alerts",
+      "Alerts",
+      Bell,
+      (can("attendance.read") && session?.user.role !== "TEACHER") ||
+        can("finance.read") ||
+        can("discipline.manage") ||
+        can("complaints.manage") ||
+        can("facilities.manage") ||
+        can("academics.manage") ||
+        can("curriculum.manage"),
+    ],
   ].filter(
     (n) =>
       n[3] && (!session?.user.mfa_setup_required || n[0] === "administration"),
@@ -423,6 +452,20 @@ function App() {
   }, [session]);
   useEffect(() => {
     if (
+      initialRoute &&
+      session &&
+      !session.mfa_required &&
+      session.user.role === "TEACHER" &&
+      ["dashboard", "students"].includes(page)
+    ) {
+      location.hash = "teaching";
+      setPage("teaching");
+      setInitialRoute(false);
+      return;
+    }
+    if (initialRoute && session && !session.mfa_required)
+      setInitialRoute(false);
+    if (
       session &&
       !session.mfa_required &&
       !session.user.mfa_setup_required &&
@@ -459,6 +502,7 @@ function App() {
   function go(p, section) {
     location.hash = section ? `${p}/${section}` : p;
     setPage(p);
+    setInitialRoute(false);
     setMobile(false);
   }
   const money = (v) =>
@@ -482,6 +526,7 @@ function App() {
         setup={setup}
         onLogin={(s) => {
           setSetup(false);
+          setInitialRoute(true);
           setSession(s);
         }}
       />
@@ -512,6 +557,9 @@ function App() {
           onClick={async () => {
             await post("/auth/logout", {});
             setSession(null);
+            setPage("dashboard");
+            location.hash = "dashboard";
+            setInitialRoute(true);
           }}
         >
           Sign out
@@ -537,6 +585,7 @@ function App() {
   const Current =
     {
       dashboard: Dashboard,
+      teaching: TeacherWorkspace,
       students: Students,
       admissions: Admissions,
       attendance: Attendance,
@@ -604,6 +653,9 @@ function App() {
                 setSession(null);
                 setConfig(null);
                 setCsrf("");
+                setPage("dashboard");
+                location.hash = "dashboard";
+                setInitialRoute(true);
               } catch (e) {
                 notify(e.message);
               }

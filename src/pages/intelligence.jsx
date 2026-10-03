@@ -1,9 +1,5 @@
-<<<<<<< HEAD
 import { ModelLab } from "./refinements";
 import React, { useEffect, useState } from "react";
-=======
-import React, { useState } from "react";
->>>>>>> c19166aa56d989729a7ccae9d3d82d61c7c8f226
 import { TrendingUp, Users, Wallet, AlertCircle } from "lucide-react";
 import { useData } from "../hooks";
 import { post } from "../api";
@@ -18,17 +14,12 @@ import {
   Loading,
   human,
 } from "../components";
-<<<<<<< HEAD
 export function Intelligence({ money, can }) {
   const q = useData("/intelligence", null);
   useEffect(() => {
     if (q.data && location.hash.endsWith("/models") && can("intelligence.manage"))
       document.getElementById("historical-model-evaluation")?.scrollIntoView();
   }, [q.data, can]);
-=======
-export function Intelligence({ money }) {
-  const q = useData("/intelligence", null);
->>>>>>> c19166aa56d989729a7ccae9d3d82d61c7c8f226
   if (q.error) return <p className="form-error">{q.error}</p>;
   if (!q.data) return <Loading />;
   const d = q.data,
@@ -149,14 +140,11 @@ export function Intelligence({ money }) {
           />
         </Panel>
       </div>
-<<<<<<< HEAD
       {can("intelligence.manage") && (
         <div id="historical-model-evaluation">
           <ModelLab />
         </div>
       )}
-=======
->>>>>>> c19166aa56d989729a7ccae9d3d82d61c7c8f226
       <Panel title="How to interpret this page">
         <ul>
           {d.limitations.map((s) => (

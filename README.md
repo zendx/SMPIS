@@ -2,14 +2,14 @@
 
 **School Management, Performance and Intelligence System** is a role-based school operations web application built with React, Node.js, Express and PostgreSQL-compatible storage.
 
-SMPIS is currently a **local application**, not a production deployment. Core operations, academic workflows, school-quality tools and historical model evaluation are implemented locally. External services, real-world predictive validation and production operations still require configuration and verification.
+SMPIS currently runs locally. A Vercel deployment path is prepared, but the application is not deployed and still needs a Supabase project, private document bucket, Vercel environment variables, and Preview validation before production use.
 
 ## Current status
 
 - Local development runs at `http://127.0.0.1:3000` and uses persistent PGlite storage by default.
 - PostgreSQL support is included. Supabase PostgreSQL is the recommended hosted database option for this SQL-based application, but it is not connected or validated in this workspace.
 - The current automated API suite has 48 tests. Browser workflows cover core, academic and operations journeys using isolated test data.
-- Hostinger deployment files are preparation materials only. No hosting, domain, SMTP service or live payment account has been configured.
+- No Vercel or Supabase project is connected to this workspace. No SMTP service or live payment account has been configured.
 
 See the [phase coverage records](#requirements-and-delivery-records) for implemented scope and known limitations.
 
@@ -95,6 +95,10 @@ The default database is persistent **PGlite**, an embedded PostgreSQL-compatible
 For a hosted database, **Supabase PostgreSQL is the recommended option** because SMPIS uses relational tables, SQL queries, constraints and transactions. Firebase Firestore is not a drop-in replacement; it uses a document data model and would require a substantial data-layer redesign. Supabase is not configured here. Validate its connection and SSL settings before using school data. Switching from PGlite does not migrate existing records automatically.
 
 Paystack checkout and webhook handling are implemented and tested with a fake provider. No live transaction has been made. Payment keys and webhook configuration are required; unsafe or mismatched captures need manual reconciliation, and automated refunds are not implemented.
+
+## Deploy to Vercel
+
+The Vercel entry point and daily protected job are configured in this repository. Vercel requires Supabase PostgreSQL and private Supabase Storage because serverless files are temporary. Configure project secrets in Vercel, then validate a Preview deployment before using school data. Follow the [Vercel deployment guide](docs/VERCEL-DEPLOYMENT.md) for the exact setup and verification steps.
 
 Email delivery requires a working SMTP provider and verified sender. SMS, WhatsApp, biometric devices, accounting integrations and native mobile apps are not implemented. The web interface is responsive on desktop and mobile browsers.
 

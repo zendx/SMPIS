@@ -12,7 +12,10 @@ export async function openDatabase({
 } = {}) {
   let db;
   if (url && !memory) {
-    const pool = new pg.Pool({ connectionString: url });
+    const pool = new pg.Pool({
+      connectionString: url,
+      max: Number(process.env.DB_POOL_MAX || (process.env.VERCEL ? 1 : 10)),
+    });
     const wrap = (client) => ({
       query: (sql, args = []) => client.query(sql, args),
     });

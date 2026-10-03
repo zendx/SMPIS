@@ -7,6 +7,7 @@
     "dev": "node server/index.js",
     "start": "node server/index.js --production",
     "build": "vite build",
+    "build:vercel": "vite build --outDir public --emptyOutDir",
     "test": "node --test tests/*.test.js",
     "test:ui": "node tests/browser.mjs",
     "test:ui:academics": "node tests/academic-browser.mjs",
