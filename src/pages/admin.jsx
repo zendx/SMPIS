@@ -1,8 +1,5 @@
 import React, { useState } from "react";
-<<<<<<< HEAD
 import { QRCodeSVG } from "qrcode.react";
-=======
->>>>>>> c19166aa56d989729a7ccae9d3d82d61c7c8f226
 import { IntegrationReadiness } from "./intelligence";
 import {
   Plus,

@@ -11,9 +11,16 @@ import { paymentRoutes, paystackWebhook } from "./paystack.js";
 import { intelligenceRoutes } from "./intelligence.js";
 import { refinementRoutes } from "./refinement-routes.js";
 import { modelRoutes } from "./model-routes.js";
+import { createDocumentStorage } from "./document-storage.js";
+import { runJobs } from "./jobs.js";
 
 export async function createApp(db, options = {}) {
   await seedRoles(db);
+  options = {
+    ...options,
+    documentStorage:
+      options.documentStorage || createDocumentStorage(options),
+  };
   const app = express();
   const proxyHops=Number(process.env.TRUST_PROXY_HOPS||0);
   if(Number.isInteger(proxyHops)&&proxyHops>0&&proxyHops<=3)app.set('trust proxy',proxyHops);
@@ -66,6 +73,17 @@ export async function createApp(db, options = {}) {
     }
     next();
   });
+  app.get("/api/cron", async (req, res, next) => {
+    const secret = process.env.CRON_SECRET;
+    if (!secret || req.get("authorization") !== `Bearer ${secret}`)
+      return res.status(401).json({ error: "Unauthorized" });
+    try {
+      await runJobs(db);
+      res.json({ status: "ok" });
+    } catch (error) {
+      next(error);
+    }
+  });
   app.use("/api/v1/auth", authRoutes(db));
   app.use(
     "/api/v1",
@@ -74,10 +92,7 @@ export async function createApp(db, options = {}) {
     coreRoutes(db, options),
     academicRoutes(db),
     operationsRoutes(db),
-<<<<<<< HEAD
     refinementRoutes(db, options),
-=======
->>>>>>> c19166aa56d989729a7ccae9d3d82d61c7c8f226
     paymentRoutes(db, options),
     intelligenceRoutes(db),
     modelRoutes(db),

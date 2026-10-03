@@ -1,9 +1,6 @@
-<<<<<<< HEAD
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-=======
->>>>>>> c19166aa56d989729a7ccae9d3d82d61c7c8f226
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { createHmac } from "node:crypto";
@@ -15,10 +12,7 @@ import { refreshOperationAlerts } from "../server/operations-service.js";
 import { refreshAlerts } from "../server/services.js";
 import { forecastSeries } from "../server/intelligence.js";
 process.env.REQUIRE_MFA = "false";
-<<<<<<< HEAD
 let documentDir;
-=======
->>>>>>> c19166aa56d989729a7ccae9d3d82d61c7c8f226
 let db,
   server,
   base,
@@ -82,13 +76,9 @@ async function login(name) {
 }
 before(async () => {
   db = await openDatabase({ memory: true });
-<<<<<<< HEAD
   documentDir = await mkdtemp(path.join(tmpdir(), "smpis-hr-test-"));
   const app = await createApp(db, {
     dataDir: documentDir,
-=======
-  const app = await createApp(db, {
->>>>>>> c19166aa56d989729a7ccae9d3d82d61c7c8f226
     gatewayRequest: async (key, path, body) => {
       gatewayCalls.push({ path, body });
       if (body)
@@ -196,10 +186,7 @@ before(async () => {
   for (const name of Object.keys(users)) await login(name);
 });
 after(async () => {
-<<<<<<< HEAD
   if (documentDir) await rm(documentDir, { recursive: true, force: true });
-=======
->>>>>>> c19166aa56d989729a7ccae9d3d82d61c7c8f226
   await new Promise((r) => server.close(r));
   await db.close();
   delete process.env.PAYSTACK_SCHOOL_KEYS_JSON;
@@ -591,14 +578,10 @@ test("leave routes to supervisors, prevents self approval and marks approved att
         [staff.id],
       )
     ).n,
-<<<<<<< HEAD
     [2, 3, 4].filter(
       (offset) =>
         ![0, 6].includes(new Date(day(offset) + "T12:00:00Z").getUTCDay()),
     ).length,
-=======
-    3,
->>>>>>> c19166aa56d989729a7ccae9d3d82d61c7c8f226
   );
   await call(
     "teacher",
@@ -607,7 +590,6 @@ test("leave routes to supervisors, prevents self approval and marks approved att
     { start_date: day(3), end_date: day(5), reason: "Overlap" },
     409,
   );
-<<<<<<< HEAD
   let previousWorkday = -1;
   while (
     [0, 6].includes(new Date(day(previousWorkday) + "T12:00:00Z").getUTCDay())
@@ -616,21 +598,12 @@ test("leave routes to supervisors, prevents self approval and marks approved att
   const conflict = await call("teacher", "/hr/leave", "POST", {
     start_date: day(previousWorkday),
     end_date: day(previousWorkday),
-=======
-  const conflict = await call("teacher", "/hr/leave", "POST", {
-    start_date: day(-1),
-    end_date: day(-1),
->>>>>>> c19166aa56d989729a7ccae9d3d82d61c7c8f226
     reason: "Late application",
   });
   await insert(db, "staff_attendance", {
     school_id: school.id,
     staff_id: staff.id,
-<<<<<<< HEAD
     attendance_date: day(previousWorkday),
-=======
-    attendance_date: day(-1),
->>>>>>> c19166aa56d989729a7ccae9d3d82d61c7c8f226
     status: "PRESENT",
     check_in_time: new Date().toISOString(),
   });
@@ -648,6 +621,12 @@ test("leave routes to supervisors, prevents self approval and marks approved att
   assert.equal((await call("otherteacher", "/hr/overview")).leave.length, 0);
 });
 test("staff performance snapshots use recorded evidence and expose missing metrics", async () => {
+  await insert(db, "staff_attendance", {
+    school_id: school.id,
+    staff_id: staff.id,
+    attendance_date: day(1),
+    status: "PRESENT",
+  });
   const review = await call("hr", "/hr/reviews", "POST", {
     staff_id: staff.id,
     academic_year_id: year.id,
@@ -852,7 +831,6 @@ test("Paystack validates signature, tenant, amount, mode and duplicate callbacks
     10000,
   );
 });
-<<<<<<< HEAD
 test("expanded reports and management alerts enforce scope and produce valid downloads", async () => {
   for (const key of [
     "attendance-summary",
@@ -927,8 +905,6 @@ test("expanded reports and management alerts enforce scope and produce valid dow
     "ACKNOWLEDGED",
   );
 });
-=======
->>>>>>> c19166aa56d989729a7ccae9d3d82d61c7c8f226
 test("MFA recovery codes are hashed, consumed once, and cannot be reused", async () => {
   const mfa = await call("teacher", "/auth/mfa/setup", "POST", {});
   const otp = new OTPAuth.TOTP({
@@ -953,7 +929,6 @@ test("MFA recovery codes are hashed, consumed once, and cannot be reused", async
   await call("teacher", "/auth/mfa/verify", "POST", { code: codes[0] }, 422);
   await call("teacher", "/auth/mfa/verify", "POST", { code: codes[1] });
 });
-<<<<<<< HEAD
 
 test("working calendars exclude holidays, enforce annual limits and cancellations restore attendance", async () => {
   // A fixed future week makes weekday/holiday expectations independent of today's weekday.
@@ -1203,5 +1178,3 @@ test("historical model imports are tenant-scoped, validated, auditable and never
     undefined,
   );
 });
-=======
->>>>>>> c19166aa56d989729a7ccae9d3d82d61c7c8f226
