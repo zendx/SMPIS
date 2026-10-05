@@ -96,11 +96,12 @@ export function Dashboard({ user, config, term, can, money, go, notify }) {
       page: "people",
       section: "reviews",
     },
-    can("operations.staff") && !can("hr.manage") && {
-      label: "My leave",
-      page: "people",
-      section: "leave",
-    },
+    can("operations.staff") &&
+      !can("hr.manage") && {
+        label: "My leave",
+        page: "people",
+        section: "leave",
+      },
     can("intelligence.read") && {
       label: can("intelligence.manage")
         ? "Historical model evaluation"
@@ -144,10 +145,10 @@ export function Dashboard({ user, config, term, can, money, go, notify }) {
       </div>
       {newTools.length > 0 && (
         <Panel
-          title="New and expanded tools"
-          description="Open the academic, HR and intelligence screens available to your account."
+          title="Quick access"
+          description="Frequently used tools for your role."
         >
-          <div className="toolbar">
+          <div className="toolbar dashboard-shortcuts">
             {newTools.map((tool) => (
               <Button
                 key={tool.label}

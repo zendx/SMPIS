@@ -9,7 +9,7 @@ if (!email)
 const release = await acquireDataLock(process.env.DATA_DIR || "./data");
 let db;
 try {
-  db = await openDatabase();
+  db = await openDatabase({});
   const u = await one(
     db,
     "SELECT * FROM users WHERE email=$1 AND role='SUPER_ADMIN' AND status='ACTIVE'",

@@ -1,6 +1,8 @@
+import { test as standaloneTest } from "node:test";
+import { openTestDatabase } from "./database.js";
 import nodemailer from "nodemailer";
 import { runJobs } from "../server/jobs.js";
-import { test } from 'node:test';
+import { test } from './database.js';
 import assert from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
 import { openDatabase, insert, one } from '../server/db.js';
@@ -12,7 +14,7 @@ import { paystackConfig } from '../server/paystack.js';
 test('integration credentials enforce role, tenant isolation, encryption, redaction, retention and deletion', async (t) => {
   process.env.REQUIRE_MFA = 'false';
   process.env.INTEGRATION_ENCRYPTION_KEY = randomBytes(32).toString('hex');
-  const db = await openDatabase({ memory: true });
+  const db = await openTestDatabase();
   const app = await createApp(db);
   const server = app.listen(0, '127.0.0.1');
   await new Promise(resolve => server.once('listening', resolve));
@@ -74,7 +76,7 @@ test('integration credentials enforce role, tenant isolation, encryption, redact
   } finally { await new Promise(resolve => server.close(resolve)); await db.close(); }
 });
 
-test('runtime refuses local database and document fallbacks', async () => {
+standaloneTest('runtime refuses local database and document fallbacks', async () => {
   const {createDocumentStorage} = await import('../server/document-storage.js');
   const saved = {...process.env};
   try {

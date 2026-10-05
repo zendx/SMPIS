@@ -1,3 +1,4 @@
+import { siteSettingsRoutes, legalRoutes } from "./site-routes.js";
 import { integrationRoutes } from "./integrations.js";
 import express from "express";
 import cookieParser from "cookie-parser";
@@ -12,7 +13,10 @@ import { paymentRoutes, paystackWebhook } from "./paystack.js";
 import { intelligenceRoutes } from "./intelligence.js";
 import { refinementRoutes } from "./refinement-routes.js";
 import { modelRoutes } from "./model-routes.js";
-import { createDocumentStorage, createMemoryDocumentStorage } from "./document-storage.js";
+import {
+  createDocumentStorage,
+  createMemoryDocumentStorage,
+} from "./document-storage.js";
 import { runJobs } from "./jobs.js";
 import { DOCUMENT_MAX_MB } from "./document-limits.js";
 
@@ -21,11 +25,15 @@ export async function createApp(db, options = {}) {
   options = {
     ...options,
     documentStorage:
-      options.documentStorage || (db.isTestDatabase ? createMemoryDocumentStorage() : createDocumentStorage()),
+      options.documentStorage ||
+      (db.isTestDatabase
+        ? createMemoryDocumentStorage()
+        : createDocumentStorage()),
   };
   const app = express();
-  const proxyHops=Number(process.env.TRUST_PROXY_HOPS||0);
-  if(Number.isInteger(proxyHops)&&proxyHops>0&&proxyHops<=3)app.set('trust proxy',proxyHops);
+  const proxyHops = Number(process.env.TRUST_PROXY_HOPS || 0);
+  if (Number.isInteger(proxyHops) && proxyHops > 0 && proxyHops <= 3)
+    app.set("trust proxy", proxyHops);
   app.disable("x-powered-by");
   app.use(
     helmet({
@@ -86,6 +94,7 @@ export async function createApp(db, options = {}) {
       next(error);
     }
   });
+  app.use("/api/v1", legalRoutes(db));
   app.use("/api/v1/auth", authRoutes(db));
   app.use(
     "/api/v1",
@@ -93,6 +102,7 @@ export async function createApp(db, options = {}) {
     accountRoutes(db),
     coreRoutes(db, options),
     integrationRoutes(db),
+    siteSettingsRoutes(db),
     academicRoutes(db),
     operationsRoutes(db),
     refinementRoutes(db, options),

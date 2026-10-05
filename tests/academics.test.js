@@ -1,7 +1,8 @@
-import { test, before, after } from "node:test";
+import { openTestDatabase } from "./database.js";
+import { test, before, after } from "./database.js";
 import assert from "node:assert/strict";
 import ExcelJS from "exceljs";
-import { openDatabase, insert, one, rows } from "../server/db.js";
+import { insert, one, rows } from "../server/db.js";
 import { createApp } from "../server/app.js";
 import { hashPassword, localClock } from "../server/security.js";
 import { parseTopicCsv } from "../server/academic-routes.js";
@@ -58,7 +59,7 @@ async function request(who, path, method = "GET", body, expected = 200) {
   return result?.data;
 }
 before(async () => {
-  db = await openDatabase({ memory: true });
+  db = await openTestDatabase();
   const app = await createApp(db);
   school = await insert(db, "schools", {
     name: "Academic Test School",

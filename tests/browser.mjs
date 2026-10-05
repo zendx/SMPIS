@@ -1,16 +1,16 @@
+import { openTestDatabase } from "./database.js";
 import { randomBytes } from "node:crypto";
 import { chromium } from "@playwright/test";
 import express from "express";
 import assert from "node:assert/strict";
 import { mkdir } from "node:fs/promises";
 import path from "node:path";
-import { openDatabase } from "../server/db.js";
 import { createApp } from "../server/app.js";
 import { localClock } from "../server/security.js";
 import * as OTPAuth from "otpauth";
 process.env.REQUIRE_MFA = "true";
 process.env.INTEGRATION_ENCRYPTION_KEY = randomBytes(32).toString("hex");
-const db = await openDatabase({ memory: true }),
+const db = await openTestDatabase(),
   app = await createApp(db, { dataDir: "test-results/uploads" });
 app.use(express.static("dist"));
 app.get("/{*path}", (req, res) =>

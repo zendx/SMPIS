@@ -260,13 +260,13 @@ export function IntegrationReadiness() {
                 name: "PostgreSQL server",
                 value: q.data.postgresql_configured
                   ? "Configured"
-                  : "Not configured",
+                  : "Local database",
               },
               {
                 name: "Secure cookies",
                 value: q.data.secure_cookies
                   ? "Enabled"
-                  : "Local development mode",
+                  : "Supabase configuration required",
               },
               { name: "Backups", value: q.data.backup_storage },
             ]}

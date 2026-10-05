@@ -1,3 +1,4 @@
+import { SiteSettings } from "./site-settings";
 import React, { useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { IntegrationSettings } from "./integrations";
@@ -269,6 +270,7 @@ export function Administration({
               "audit trail",
               "security",
               "integrations",
+              "site settings",
             ]
           : ["security"]
         ).map((t) => (
@@ -281,6 +283,7 @@ export function Administration({
           </button>
         ))}
       </div>
+      {tab === "site settings" && user.role === "SUPER_ADMIN" && <SiteSettings notify={notify} />}
       {tab === "integrations" && user.role === "SUPER_ADMIN" && <IntegrationSettings notify={notify} />}
       {tab === "school" && (
         <Panel

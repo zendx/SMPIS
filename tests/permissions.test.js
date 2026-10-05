@@ -1,7 +1,8 @@
-import { test, before, after } from "node:test";
+import { openTestDatabase } from "./database.js";
+import { test, before, after } from "./database.js";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { openDatabase, insert } from "../server/db.js";
+import { insert } from "../server/db.js";
 import { createApp } from "../server/app.js";
 import { ROLE_PERMISSIONS, hashPassword, permitted } from "../server/security.js";
 
@@ -11,7 +12,7 @@ const clients = new Map();
 const password = "Permission-test-2026!";
 
 before(async () => {
-  db = await openDatabase({ memory: true });
+  db = await openTestDatabase();
   const app = await createApp(db, { dataDir: "test-results/permissions" });
   server = app.listen(0, "127.0.0.1");
   await new Promise((resolve) => server.once("listening", resolve));

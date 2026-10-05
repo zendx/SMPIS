@@ -1,14 +1,14 @@
-import { test, before, after } from "node:test";
+import { openTestDatabase } from "./database.js";
+import { test, before, after } from "./database.js";
 import assert from "node:assert/strict";
-import { openDatabase, one, insert } from "../server/db.js";
+import { one, insert } from "../server/db.js";
 import { createApp } from "../server/app.js";
 import { hashPassword, cents, localClock } from "../server/security.js";
 import ExcelJS from "exceljs";
 import * as OTPAuth from "otpauth";
 import { runJobs } from "../server/jobs.js";
-import { backupDatabase, acquireDataLock } from "../server/backup.js";
-import { readFile, mkdir, writeFile } from "node:fs/promises";
-import { PGlite } from "@electric-sql/pglite";
+import { acquireDataLock } from "../server/backup.js";
+import { mkdir } from "node:fs/promises";
 process.env.REQUIRE_MFA = "false";
 
 let db,
@@ -73,7 +73,7 @@ async function expect(c, path, method, body, status = 200) {
   return r.data;
 }
 before(async () => {
-  db = await openDatabase({ memory: true });
+  db = await openTestDatabase();
   const app = await createApp(db, { dataDir: "test-results/data" });
   server = app.listen(0, "127.0.0.1");
   await new Promise((resolve) => server.once("listening", resolve));
@@ -658,26 +658,10 @@ test("scheduled notifications are deduplicated and remain queued without an emai
   );
   assert.ok(pending.n >= 3);
 });
-test("backups restore records and process locks prevent unsafe concurrent use", async () => {
+test("process locks prevent concurrent backup commands", async () => {
   const dir = "test-results/backup-source";
   await mkdir(dir, { recursive: true });
   const release = await acquireDataLock(dir);
-  await assert.rejects(acquireDataLock(dir), /already in use/);
-  await release();
-  const output = await backupDatabase(db, {
-    dataDir: dir,
-    outputRoot: "test-results/backups",
-  });
-  const restored = new PGlite({
-    loadDataDir: new Blob([await readFile(`${output}/database.tar.gz`)]),
-  });
-  assert.equal(
-    (
-      await one(restored, "SELECT first_name FROM students WHERE id=$1", [
-        student,
-      ])
-    ).first_name,
-    "Amara",
-  );
-  await restored.close();
+  try { await assert.rejects(acquireDataLock(dir), /already in use/); }
+  finally { await release(); }
 });

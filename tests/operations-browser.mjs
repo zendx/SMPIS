@@ -1,13 +1,14 @@
+import { openTestDatabase } from "./database.js";
 import { chromium } from "@playwright/test";
 import express from "express";
 import assert from "node:assert/strict";
 import path from "node:path";
 import { mkdir } from "node:fs/promises";
-import { openDatabase, insert } from "../server/db.js";
+import { insert } from "../server/db.js";
 import { createApp } from "../server/app.js";
 import { hashPassword, localClock } from "../server/security.js";
 process.env.REQUIRE_MFA = "false";
-const db = await openDatabase({ memory: true }),
+const db = await openTestDatabase(),
   app = await createApp(db),
   school = await insert(db, "schools", {
     name: "Greenfield Academy",

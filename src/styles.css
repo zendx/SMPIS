@@ -1942,3 +1942,137 @@ pre {
     padding: 22px;
   }
 }
+
+.cookie-notice {
+  background: #f1f6f3;
+  border-bottom: 1px solid #cbd9d1;
+  padding: 18px 24px;
+  display: flex;
+  gap: 24px;
+  align-items: center;
+  justify-content: space-between;
+}
+.cookie-notice p {
+  margin: 6px 0;
+  max-width: 780px;
+  font-size: 14px;
+}
+.cookie-notice .toolbar {
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  max-width: 100%;
+}
+.legal-footer {
+  padding: 20px;
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 18px;
+  background: #f6f8f6;
+  font-size: 13px;
+}
+.legal-footer a,
+.legal-page a,
+.cookie-notice a {
+  color: #153e36;
+  text-decoration: underline;
+}
+.legal-page {
+  max-width: 960px;
+  padding: 32px 24px;
+  margin: auto;
+  line-height: 1.7;
+}
+.legal-page h1 {
+  margin: 20px 0;
+}
+.legal-page h2 {
+  margin: 28px 0 10px;
+}
+.legal-page table {
+  min-width: 650px;
+}
+@media (max-width: 800px) {
+  .cookie-notice {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 16px;
+    gap: 12px;
+  }
+}
+
+/* Consistent settings spacing and accessible floating cookie controls. */
+.admin-settings {
+  display: grid;
+  gap: 24px;
+}
+.admin-settings .panel > form,
+.admin-settings .panel > p,
+.admin-settings .panel > [role="alert"] {
+  margin: 24px;
+}
+.provider-actions {
+  padding: 0 24px 24px;
+}
+.dashboard-shortcuts {
+  padding: 20px 24px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.cookie-notice {
+  position: fixed;
+  bottom: 16px;
+  left: 16px;
+  right: 16px;
+  z-index: 110;
+  border: 1px solid #cbd9d1;
+  border-radius: 14px;
+  box-shadow: 0 8px 32px #143e3526;
+  max-height: calc(100dvh - 32px);
+  overflow: auto;
+}
+body:has(.cookie-notice) {
+  padding-bottom: 160px;
+}
+:root {
+  --muted: #61736b;
+}
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid #318467;
+  outline-offset: 3px;
+}
+.tabs {
+  flex-wrap: wrap;
+  gap: 8px;
+}
+@media (max-width: 600px) {
+  .admin-settings .panel > form,
+  .admin-settings .panel > p {
+    margin: 16px;
+  }
+  .provider-actions,
+  .dashboard-shortcuts {
+    padding: 16px;
+  }
+  .cookie-notice {
+    bottom: 8px;
+    left: 8px;
+    right: 8px;
+  }
+  body:has(.cookie-notice) {
+    padding-bottom: 250px;
+  }
+}
+
+.notice {
+  color: #5e613c;
+  font-size: 13px;
+}
+.tabs button {
+  color: #61736b;
+}

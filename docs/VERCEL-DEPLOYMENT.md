@@ -75,3 +75,7 @@ If Vercel reports no entrypoint in `public`, its backend output directory is poi
 ## Frontend assets
 
 The function bundle explicitly includes `public/**`. JavaScript and CSS requests have dedicated file routes before the SPA fallback, so they receive their correct content type if they reach Express. Missing assets return 404 instead of HTML. The wildcard `functions` pattern applies the bundle inclusion to the detected Express function without relying on its generated entry-point name.
+
+## Legal settings and local databases
+
+Run `npm run supabase:setup` before deploying this version to create `site_legal_settings` with RLS. Super admins publish legal contact details under Administration > Site settings. Supabase is the only database; database switching is unavailable.

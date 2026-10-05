@@ -1,11 +1,12 @@
+import { openTestDatabase } from "./database.js";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { test, before, after } from "node:test";
+import { test, before, after } from "./database.js";
 import assert from "node:assert/strict";
 import { createHmac } from "node:crypto";
 import * as OTPAuth from "otpauth";
-import { openDatabase, insert, one, rows } from "../server/db.js";
+import { insert, one, rows } from "../server/db.js";
 import { createApp } from "../server/app.js";
 import { hashPassword, localClock } from "../server/security.js";
 import { refreshOperationAlerts } from "../server/operations-service.js";
@@ -75,7 +76,7 @@ async function login(name) {
   return d;
 }
 before(async () => {
-  db = await openDatabase({ memory: true });
+  db = await openTestDatabase();
   documentDir = await mkdtemp(path.join(tmpdir(), "smpis-hr-test-"));
   const app = await createApp(db, {
     dataDir: documentDir,

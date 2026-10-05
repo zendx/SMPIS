@@ -1,4 +1,3 @@
-import { PGlite } from "@electric-sql/pglite";
 import pg from "pg";
 import { supabaseConfiguration } from "./supabase.js";
 import { initializeSchema } from "./schema.js";
@@ -7,13 +6,12 @@ import { postgresConfiguration } from "./postgres-config.js";
 pg.types.setTypeParser(1082, (value) => value);
 
 export async function openDatabase({
-  memory = false,
   url = process.env.DATABASE_URL,
-  initialize = memory || !process.env.VERCEL,
+  initialize = !process.env.VERCEL,
 } = {}) {
-  if (!memory) supabaseConfiguration({ ...process.env, DATABASE_URL: url });
+  supabaseConfiguration({ ...process.env, DATABASE_URL: url });
   let db;
-  if (url && !memory) {
+  {
     const pool = new pg.Pool(postgresConfiguration(url));
     const wrap = (client) => ({
       query: (sql, args = []) => client.query(sql, args),
@@ -37,24 +35,31 @@ export async function openDatabase({
         }
       },
     };
-  } else {
-    db = new PGlite("memory://", { parsers: { 1082: (value) => value } });
-    db.isTestDatabase = true;
   }
-  if (!memory) {
+  db.backendMode = "supabase";
+  {
     try {
-      const roles = (await db.query("SELECT rolname FROM pg_roles WHERE rolname IN ('anon','authenticated')")).rows;
-      if (roles.length !== 2) throw new Error("DATABASE_URL must point to your Supabase database.");
-    } catch (error) { await db.close(); throw error; }
+      const roles = (
+        await db.query(
+          "SELECT rolname FROM pg_roles WHERE rolname IN ('anon','authenticated')",
+        )
+      ).rows;
+      if (roles.length !== 2)
+        throw new Error("DATABASE_URL must point to your Supabase database.");
+    } catch (error) {
+      await db.close();
+      throw error;
+    }
   }
   if (initialize) {
     try {
-      if (url && !memory) {
-        await db.transaction(async (tx) => {
-          await tx.query("SELECT pg_advisory_xact_lock(736774, 1)");
-          await initializeSchema({ ...tx, exec: (sql) => tx.query(sql) }, { protectPublicTables: true });
-        });
-      } else await initializeSchema(db);
+      await db.transaction(async (tx) => {
+        await tx.query("SELECT pg_advisory_xact_lock(736774, 1)");
+        await initializeSchema(
+          { ...tx, exec: (sql) => tx.query(sql) },
+          { protectPublicTables: true },
+        );
+      });
     } catch (error) {
       await db.close();
       throw error;

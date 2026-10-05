@@ -1,4 +1,4 @@
-import { mkdir, writeFile, cp, readFile, unlink } from "node:fs/promises";
+import { mkdir, writeFile, readFile, unlink } from "node:fs/promises";
 import path from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
@@ -44,13 +44,7 @@ export async function backupDatabase(
     new Date().toISOString().replace(/[:.]/g, "-"),
   );
   await mkdir(out, { recursive: true });
-  if (typeof db.dumpDataDir === "function") {
-    const dump = await db.dumpDataDir();
-    await writeFile(
-      path.join(out, "database.tar.gz"),
-      Buffer.from(await dump.arrayBuffer()),
-    );
-  } else {
+  {
     const url = new URL(process.env.DATABASE_URL);
     const env = {
       ...process.env,
@@ -66,20 +60,13 @@ export async function backupDatabase(
       { env, windowsHide: true },
     );
   }
-  if (typeof db.dumpDataDir === "function") try {
-    await cp(path.resolve(dataDir, "documents"), path.join(out, "documents"), {
-      recursive: true,
-    });
-  } catch (e) {
-    if (e.code !== "ENOENT") throw e;
-  }
   await writeFile(
     path.join(out, "manifest.json"),
     JSON.stringify(
       {
         created_at: new Date().toISOString(),
-        engine: typeof db.dumpDataDir === "function" ? "pglite" : "postgresql",
-        documents: typeof db.dumpDataDir === "function" ? "documents" : "Supabase Storage objects are not included",
+        engine: "postgresql",
+        documents: "Supabase Storage objects are not included",
       },
       null,
       2,

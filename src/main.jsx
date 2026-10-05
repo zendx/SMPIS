@@ -1,3 +1,4 @@
+import { CookieNotice, LegalPage, LegalFooter } from "./pages/legal";
 import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
@@ -742,5 +743,11 @@ function App() {
 }
 const applyCode = new URLSearchParams(location.search).get("apply");
 createRoot(document.getElementById("root")).render(
-  applyCode ? <PublicApplication code={applyCode} /> : <App />,
+  <>
+    <CookieNotice />
+    {["/terms", "/privacy", "/cookies"].includes(location.pathname.replace(/\/$/, ""))
+      ? <LegalPage type={location.pathname.replace(/\/$/, "").slice(1)} />
+      : applyCode ? <PublicApplication code={applyCode} /> : <App />}
+    <LegalFooter />
+  </>,
 );

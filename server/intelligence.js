@@ -200,12 +200,10 @@ export function intelligenceRoutes(db) {
           app_url: process.env.APP_URL || null,
           https: process.env.APP_URL?.startsWith("https://") || false,
           email_configured: !!(await smtpConfig(db, req.user.school_id)),
-          postgresql_configured: !!process.env.DATABASE_URL,
+          postgresql_configured: db.backendMode === "supabase",
           secure_cookies: process.env.NODE_ENV === "production",
-          backup_storage:
-            "Supabase database and private document storage",
-          deployment:
-            "Supabase backend",
+          backup_storage: "Supabase database and private document storage",
+          deployment: "Supabase backend",
         },
       }),
   );

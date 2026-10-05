@@ -31,7 +31,6 @@ Open http://127.0.0.1:3000. The first-run screen creates the school and initial 
 
 Super admins manage school-specific SMTP, Paystack, Flutterwave, and Twilio credentials in **Administration > Integrations**. Secrets are encrypted and hidden after saving. SMTP and Paystack power the existing email and payment workflows. Flutterwave checkout and Twilio SMS delivery are not implemented.
 
-Supabase is required for the running application. PGlite and in-memory documents support isolated tests; there is no automatic outage fallback. Existing local data is not migrated automatically.
 
 ## Verification
 
@@ -42,3 +41,14 @@ npm run test:ui
 ```
 
 Browser tests use `dist`; run `npm run build` before `npm run test:ui`. Keep `.env`, school data, backups, and the encryption key private. Database recovery and document backups must be configured separately in Supabase.
+
+## Legal pages and cookies
+
+Terms, Privacy, and Cookies are public at `/terms`, `/privacy`, and `/cookies`. Super admins publish the operator name and privacy email in Administration > Site settings. The notice inventories the actual application cookies: `smpis_session` (8-hour, HttpOnly login session) and `smpis_cookie_preferences` (365-day notice preference, created on acceptance). No application analytics or advertising cookies are configured. The notice can be dismissed without saving a preference.
+
+## Local database selection
+
+
+Run `npm run build:vercel` followed by `node tests/site-browser.mjs` to verify public policy pages, cookie preferences, published legal contacts in Chrome against an isolated test database.
+
+Supabase is the only database for development and deployment. Integration and browser tests require a separate PostgreSQL `TEST_DATABASE_URL`; each run creates and removes its own isolated schema. Without this variable, `npm test` runs the standalone checks and explicitly skips database integration tests. Tests never use your application `DATABASE_URL`.
