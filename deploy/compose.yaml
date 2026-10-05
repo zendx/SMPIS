@@ -1,42 +1,25 @@
 services:
-  database:
-    image: postgres:15-bookworm
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: smpis
-      POSTGRES_USER: smpis
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set a strong database password}
-    volumes:
-      - postgres:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U smpis -d smpis"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
   app:
     build:
       context: ..
       dockerfile: deploy/Dockerfile
     restart: unless-stopped
     init: true
-    depends_on:
-      database:
-        condition: service_healthy
     environment:
       NODE_ENV: production
       HOST: 0.0.0.0
       PORT: 3000
-      DATA_DIR: /app/data
-      DATABASE_URL: ${DATABASE_URL:?Set the PostgreSQL connection URL}
-      APP_URL: https://smpis.com
+      DATABASE_URL: ${DATABASE_URL:?Set the Supabase connection URL}
+      SUPABASE_URL: ${SUPABASE_URL:?Set your Supabase URL}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:?Set your server secret}
+      SUPABASE_STORAGE_BUCKET: ${SUPABASE_STORAGE_BUCKET:-school-documents}
+      INTEGRATION_ENCRYPTION_KEY: ${INTEGRATION_ENCRYPTION_KEY:?Set the stable encryption key}
+      APP_URL: ${APP_URL:?Set your HTTPS application URL}
       TRUST_PROXY_HOPS: 1
       SMTP_URL: ${SMTP_URL:-}
       MAIL_FROM: ${MAIL_FROM:-}
       PAYSTACK_SCHOOL_KEYS_JSON: ${PAYSTACK_SCHOOL_KEYS_JSON:-{}}
       PAYSTACK_LIVE_ENABLED: ${PAYSTACK_LIVE_ENABLED:-false}
-    volumes:
-      - documents:/app/data
-      - backups:/app/backups
     expose:
       - "3000"
     stop_grace_period: 60s
@@ -55,8 +38,5 @@ services:
       - caddy_data:/data
       - caddy_config:/config
 volumes:
-  postgres:
-  documents:
-  backups:
   caddy_data:
   caddy_config:

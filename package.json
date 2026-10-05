@@ -12,7 +12,9 @@
     "test:ui": "node tests/browser.mjs",
     "test:ui:academics": "node tests/academic-browser.mjs",
     "test:ui:operations": "node tests/operations-browser.mjs",
-    "backup": "node scripts/backup.js"
+    "backup": "node scripts/backup.js",
+    "supabase:setup": "node scripts/supabase.js setup",
+    "supabase:check": "node scripts/supabase.js check"
   },
   "engines": {
     "node": ">=22.12.0"

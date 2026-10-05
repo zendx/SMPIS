@@ -331,6 +331,22 @@ try {
     path: "test-results/intelligence-desktop.png",
     fullPage: true,
   });
+  // A school administrator without platform designation must not mount this page.
+  await db.query("DELETE FROM platform_operators WHERE user_id=$1", [users.admin.id]);
+  const platformRequests = [];
+  const recordPlatformRequest = (request) => {
+    if (request.url().includes("/api/v1/platform/")) platformRequests.push(request.url());
+  };
+  page.on("request", recordPlatformRequest);
+  await page.goto(`${origin}/?permission-route-test=1#platform`);
+  await page.waitForFunction(() => location.hash === "#dashboard");
+  await page.locator("nav").waitFor();
+  assert.equal(await page.locator("nav").getByRole("button", { name: "Schools", exact: true }).count(), 0);
+  assert.deepEqual(platformRequests, []);
+  page.off("request", recordPlatformRequest);
+  await insert(db, "platform_operators", { user_id: users.admin.id });
+  await page.reload();
+  await page.locator("nav").getByRole("button", { name: "Schools", exact: true }).waitFor();
   await nav("Schools");
   await click("Add school");
   await field("School name").fill("Oakridge School");

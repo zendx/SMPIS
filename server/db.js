@@ -1,21 +1,20 @@
 import { PGlite } from "@electric-sql/pglite";
 import pg from "pg";
-import { readFile, mkdir } from "node:fs/promises";
-import path from "node:path";
+import { supabaseConfiguration } from "./supabase.js";
+import { initializeSchema } from "./schema.js";
+import { postgresConfiguration } from "./postgres-config.js";
 // Keep calendar dates independent of the server machine's timezone.
 pg.types.setTypeParser(1082, (value) => value);
 
 export async function openDatabase({
   memory = false,
-  dataDir = process.env.DATA_DIR || "./data",
   url = process.env.DATABASE_URL,
+  initialize = memory || !process.env.VERCEL,
 } = {}) {
+  if (!memory) supabaseConfiguration({ ...process.env, DATABASE_URL: url });
   let db;
   if (url && !memory) {
-    const pool = new pg.Pool({
-      connectionString: url,
-      max: Number(process.env.DB_POOL_MAX || (process.env.VERCEL ? 1 : 10)),
-    });
+    const pool = new pg.Pool(postgresConfiguration(url));
     const wrap = (client) => ({
       query: (sql, args = []) => client.query(sql, args),
     });
@@ -39,21 +38,28 @@ export async function openDatabase({
       },
     };
   } else {
-    if (!memory) await mkdir(dataDir, { recursive: true });
-    db = new PGlite(memory ? "memory://" : path.resolve(dataDir, "postgres"), {
-      parsers: { 1082: (value) => value },
-    });
+    db = new PGlite("memory://", { parsers: { 1082: (value) => value } });
+    db.isTestDatabase = true;
   }
-  await db.exec(
-    await readFile(new URL("./schema.sql", import.meta.url), "utf8"),
-  );
-  await db.exec(
-    await readFile(new URL("./academic-schema.sql", import.meta.url), "utf8"),
-  );
-  await db.exec(
-    await readFile(new URL("./operations-schema.sql", import.meta.url), "utf8"),
-  );
-  await db.exec(await readFile(new URL('./refinement-schema.sql',import.meta.url),'utf8'));
+  if (!memory) {
+    try {
+      const roles = (await db.query("SELECT rolname FROM pg_roles WHERE rolname IN ('anon','authenticated')")).rows;
+      if (roles.length !== 2) throw new Error("DATABASE_URL must point to your Supabase database.");
+    } catch (error) { await db.close(); throw error; }
+  }
+  if (initialize) {
+    try {
+      if (url && !memory) {
+        await db.transaction(async (tx) => {
+          await tx.query("SELECT pg_advisory_xact_lock(736774, 1)");
+          await initializeSchema({ ...tx, exec: (sql) => tx.query(sql) }, { protectPublicTables: true });
+        });
+      } else await initializeSchema(db);
+    } catch (error) {
+      await db.close();
+      throw error;
+    }
+  }
   return db;
 }
 export async function rows(db, sql, args = []) {

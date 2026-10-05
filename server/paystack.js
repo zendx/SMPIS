@@ -1,3 +1,4 @@
+import { integrationConfig } from "./integrations.js";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { one, rows, insert, audit } from "./db.js";
 import { fail, permitted, token, cents } from "./security.js";
@@ -9,7 +10,14 @@ import {
 } from "./services.js";
 import { z, id } from "./validation.js";
 import express from "express";
-export function paystackConfig(schoolId) {
+export async function paystackConfig(schoolId, db) {
+  const saved = db ? await integrationConfig(db, schoolId, "paystack") : null;
+  if (saved) {
+    if (!saved.enabled || !/^sk_(test|live)_/.test(saved.secret_key)) return null;
+    const mode = saved.secret_key.startsWith("sk_test_") ? "TEST" : "LIVE";
+    if (mode === "LIVE" && !saved.live_enabled) return null;
+    return { key: saved.secret_key, mode };
+  }
   let keys = {};
   try {
     keys = JSON.parse(process.env.PAYSTACK_SCHOOL_KEYS_JSON || "{}");
@@ -50,7 +58,7 @@ export async function settlePaystack(db, schoolId, data) {
     );
     if (!g) fail(404, "Payment reference not found.");
     if (["PAID", "TEST_CONFIRMED", "REVIEW"].includes(g.status)) return g;
-    const config = paystackConfig(schoolId);
+    const config = await paystackConfig(schoolId, tx);
     if (!config) fail(503, "Paystack is not configured for this school.");
     if (data.status !== "success") return g;
     if (
@@ -123,7 +131,7 @@ export async function settlePaystack(db, schoolId, data) {
 export function paystackWebhook(db) {
   return async (req, res) => {
     const schoolId = id.parse(req.params.school),
-      config = paystackConfig(schoolId);
+      config = await paystackConfig(schoolId, db);
     if (!config) fail(503, "Payment integration is unavailable.");
     const signature = req.get("x-paystack-signature") || "";
     if (!/^[a-f0-9]{128}$/i.test(signature))
@@ -142,9 +150,9 @@ export function paymentRoutes(db, { gatewayRequest = paystackRequest } = {}) {
   const r = express.Router();
   const allowed = (u) =>
     permitted(u, "finance.read") || permitted(u, "finance.own");
-  r.get("/payments/config", (req, res) => {
+  r.get("/payments/config", async (req, res) => {
     if (!allowed(req.user)) fail(403, "Payment access required.");
-    const c = paystackConfig(req.user.school_id);
+    const c = await paystackConfig(req.user.school_id, db);
     res.json({ data: { configured: !!c, mode: c?.mode || null } });
   });
   r.get("/payments/transactions", async (req, res) => {
@@ -164,7 +172,7 @@ export function paymentRoutes(db, { gatewayRequest = paystackRequest } = {}) {
     const b = z.object({ invoice_id: id, amount: z.string() }).parse(req.body),
       invoice = await schoolRecord(db, u, "student_invoices", b.invoice_id);
     await studentAccess(db, u, invoice.student_id);
-    const config = paystackConfig(u.school_id);
+    const config = await paystackConfig(u.school_id, db);
     if (!config) fail(503, "Online payment is not configured for this school.");
     let origin;
     try {
@@ -245,7 +253,7 @@ export function paymentRoutes(db, { gatewayRequest = paystackRequest } = {}) {
     if (!g) fail(404, "Payment not found.");
     const invoice = await schoolRecord(db, u, "student_invoices", g.invoice_id);
     await studentAccess(db, u, invoice.student_id);
-    const config = paystackConfig(u.school_id);
+    const config = await paystackConfig(u.school_id, db);
     if (!config) fail(503, "Payment integration unavailable.");
     const data = await gatewayRequest(
       config.key,

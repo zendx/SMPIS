@@ -260,7 +260,7 @@ export function IntegrationReadiness() {
                 name: "PostgreSQL server",
                 value: q.data.postgresql_configured
                   ? "Configured"
-                  : "Local PGlite",
+                  : "Not configured",
               },
               {
                 name: "Secure cookies",

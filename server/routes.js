@@ -1,5 +1,7 @@
+import { smtpConfig } from "./integrations.js";
 import express from "express";
 import multer from "multer";
+import { DOCUMENT_MAX_BYTES, DOCUMENT_MAX_MB } from "./document-limits.js";
 import {
   preserveBeforeTransfer,
   rosterAfterTransfer,
@@ -72,7 +74,7 @@ export function coreRoutes(
       role_permissions: permitted(req.user, "admin.write")
         ? ROLE_PERMISSIONS
         : undefined,
-      smtp_configured: !!process.env.SMTP_URL,
+      smtp_configured: !!(await smtpConfig(db, req.user.school_id)),
     });
   });
   r.patch("/config", requirePermission("admin.write"), async (req, res) => {
@@ -510,7 +512,7 @@ export function coreRoutes(
 
   const upload = multer({
     storage: multer.memoryStorage(),
-    limits: { fileSize: 5 * 1024 * 1024, files: 1 },
+    limits: { fileSize: DOCUMENT_MAX_BYTES, files: 1 },
   });
   r.post(
     "/students/:id/documents",
@@ -519,7 +521,7 @@ export function coreRoutes(
     async (req, res) => {
       const s = await studentAccess(db, req.user, id.parse(req.params.id)),
         f = req.file;
-      if (!f) fail(422, "Choose a PDF, PNG or JPEG file (up to 5 MB).");
+      if (!f) fail(422, `Choose a PDF, PNG or JPEG file (up to ${DOCUMENT_MAX_MB} MB).`);
       const sig = f.buffer.subarray(0, 8),
         mime =
           sig.subarray(0, 5).toString() === "%PDF-"
@@ -531,7 +533,7 @@ export function coreRoutes(
                 : null;
       if (!mime) fail(422, "Only PDF, PNG and JPEG documents are supported.");
       const key = token();
-      await documentStorage.put(key, f.buffer);
+      await documentStorage.put(key, f.buffer, mime);
       const doc = await insert(db, "student_documents", {
         school_id: req.user.school_id,
         student_id: s.id,
@@ -1146,7 +1148,7 @@ export function coreRoutes(
         ],
       );
       ok(res, {
-        message: process.env.SMTP_URL
+        message: (await smtpConfig(db, req.user.school_id))
           ? "Reminder queued for email delivery."
           : "Reminder saved in the outbox. Email delivery requires SMTP configuration.",
       });

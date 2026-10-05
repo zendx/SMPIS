@@ -1,3 +1,4 @@
+import { smtpConfig } from "./integrations.js";
 import nodemailer from "nodemailer";
 import { rows } from "./db.js";
 import { refreshAlerts } from "./services.js";
@@ -54,15 +55,15 @@ export async function runJobs(db) {
         );
     }
   }
-  if (!process.env.SMTP_URL) return;
-  const transport = nodemailer.createTransport(process.env.SMTP_URL);
   for (const n of await rows(
     db,
     "SELECT * FROM notifications WHERE delivery_status='PENDING' AND attempts<5 AND email<>'' ORDER BY created_at LIMIT 50",
   )) {
+    const smtp = await smtpConfig(db, n.school_id);
+    if (!smtp) continue;
     try {
-      await transport.sendMail({
-        from: process.env.MAIL_FROM,
+      await nodemailer.createTransport(smtp.transport).sendMail({
+        from: smtp.from,
         to: n.email,
         subject: n.title,
         text: n.body,

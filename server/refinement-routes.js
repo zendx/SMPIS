@@ -1,5 +1,6 @@
 import express from "express";
 import multer from "multer";
+import { DOCUMENT_MAX_BYTES } from "./document-limits.js";
 import path from "node:path";
 import { z, id, text, date } from "./validation.js";
 import { one, rows, insert, audit } from "./db.js";
@@ -19,7 +20,7 @@ const ok = (res, data) => res.json({ data, errors: [] });
 const reason = z.string().trim().min(5).max(2000);
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024, files: 1, fields: 2 },
+  limits: { fileSize: DOCUMENT_MAX_BYTES, files: 1, fields: 2 },
 });
 export function refinementRoutes(db, options = {}) {
   const r = express.Router();
@@ -488,7 +489,7 @@ export function refinementRoutes(db, options = {}) {
                 : null;
       if (!mime) fail(422, "Only PDF, PNG and JPEG documents are supported.");
       const key = token();
-      await options.documentStorage.put(key, f.buffer);
+      await options.documentStorage.put(key, f.buffer, mime);
       let doc;
       try {
         doc = await db.transaction(async (tx) => {

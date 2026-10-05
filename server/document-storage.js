@@ -1,18 +1,12 @@
-import path from "node:path";
-import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
-
-export function createDocumentStorage({ dataDir = "./data" } = {}) {
+export function createDocumentStorage() {
   const baseUrl = process.env.SUPABASE_URL?.replace(/\/$/, ""),
     serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY,
     bucket = process.env.SUPABASE_STORAGE_BUCKET || "school-documents",
     remote = Boolean(baseUrl && serviceKey);
 
-  if (process.env.VERCEL && !remote)
-    throw new Error(
-      "Configure SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY and a private storage bucket before deploying to Vercel.",
-    );
+  if (!remote) throw new Error("Configure SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY; incomplete configuration cannot use local storage.");
 
-  async function request(method, key, body) {
+  async function request(method, key, body, contentType) {
     const response = await fetch(
       `${baseUrl}/storage/v1/object/${encodeURIComponent(bucket)}/${encodeURIComponent(key)}`,
       {
@@ -20,7 +14,7 @@ export function createDocumentStorage({ dataDir = "./data" } = {}) {
         headers: {
           apikey: serviceKey,
           Authorization: `Bearer ${serviceKey}`,
-          ...(body ? { "Content-Type": "application/octet-stream" } : {}),
+          ...(body ? { "Content-Type": contentType || "application/octet-stream" } : {}),
         },
         body,
         signal: AbortSignal.timeout(15_000),
@@ -32,41 +26,29 @@ export function createDocumentStorage({ dataDir = "./data" } = {}) {
   }
 
   return {
-    async put(key, buffer) {
-      if (remote) {
-        await request("POST", key, buffer);
-        return;
-      }
-      const dir = path.resolve(dataDir, "documents");
-      await mkdir(dir, { recursive: true });
-      await writeFile(path.join(dir, key), buffer, { flag: "wx" });
+    async put(key, buffer, contentType) {
+      await request("POST", key, buffer, contentType);
     },
     async get(key) {
-      if (remote) return Buffer.from(await (await request("GET", key)).arrayBuffer());
-      return readFile(path.resolve(dataDir, "documents", key));
+      return Buffer.from(await (await request("GET", key)).arrayBuffer());
     },
     async delete(key) {
-      if (remote) {
-        const response = await fetch(
-          `${baseUrl}/storage/v1/object/${encodeURIComponent(bucket)}`,
-          {
-            method: "DELETE",
-            headers: {
-              apikey: serviceKey,
-              Authorization: `Bearer ${serviceKey}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ prefixes: [key] }),
-            signal: AbortSignal.timeout(15_000),
-          },
-        );
-        if (!response.ok)
-          throw new Error(
-            `Private document storage returned ${response.status}.`,
-          );
-        return;
-      }
-      await unlink(path.resolve(dataDir, "documents", key));
+      const response = await fetch(`${baseUrl}/storage/v1/object/${encodeURIComponent(bucket)}`, {
+        method: "DELETE",
+        headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ prefixes: [key] }), signal: AbortSignal.timeout(15000),
+      });
+      if (!response.ok) throw new Error(`Private document storage returned ${response.status}.`);
     },
+  };
+}
+
+// Explicit isolated test storage; never used by a running Supabase database.
+export function createMemoryDocumentStorage() {
+  const documents = new Map();
+  return {
+    async put(key, bytes) { documents.set(key, Buffer.from(bytes)); },
+    async get(key) { if (!documents.has(key)) throw Object.assign(new Error("Document missing"), { code: "ENOENT" }); return Buffer.from(documents.get(key)); },
+    async delete(key) { documents.delete(key); },
   };
 }

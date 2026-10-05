@@ -2,14 +2,14 @@
 
 **School Management, Performance and Intelligence System** is a role-based school operations web application built with React, Node.js, Express and PostgreSQL-compatible storage.
 
-SMPIS currently runs locally. A Vercel deployment path is prepared, but the application is not deployed and still needs a Supabase project, private document bucket, Vercel environment variables, and Preview validation before production use.
+SMPIS requires Supabase PostgreSQL and private Supabase Storage in development and production. A Vercel deployment path is prepared.
 
 ## Current status
 
-- Local development runs at `http://127.0.0.1:3000` and uses persistent PGlite storage by default.
-- PostgreSQL support is included. Supabase PostgreSQL is the recommended hosted database option for this SQL-based application, but it is not connected or validated in this workspace.
-- The current automated API suite has 48 tests. Browser workflows cover core, academic and operations journeys using isolated test data.
-- No Vercel or Supabase project is connected to this workspace. No SMTP service or live payment account has been configured.
+- Local and hosted servers use Supabase; there is no persistent local database or upload fallback.
+- In-memory databases and document storage are reserved for isolated automated tests.
+- Super admins can manage school-specific SMTP, Paystack, Flutterwave and Twilio credentials under Administration ? Integrations.
+- SMTP and Paystack settings power existing email and payment flows. Flutterwave checkout and Twilio SMS delivery are not implemented; their credentials can be stored securely.
 
 See the [phase coverage records](#requirements-and-delivery-records) for implemented scope and known limitations.
 
@@ -23,10 +23,12 @@ XAMPP Apache and MySQL are not required. Node serves the React application and A
 
 ## Run locally
 
-From the project directory on Windows:
+Copy `.env.example` to your private `.env`, enter Supabase credentials, and generate a stable `INTEGRATION_ENCRYPTION_KEY` before running these commands. From the project directory on Windows:
 
 ```powershell
 npm.cmd install
+npm.cmd run supabase:setup
+npm.cmd run supabase:check
 npm.cmd run dev
 ```
 
@@ -39,7 +41,7 @@ npm.cmd run build
 npm.cmd start
 ```
 
-The application stores its local database in `data/postgres`, uploads in `data/documents`, and backups under `backups/`. Keep these directories and `.env` private and out of source control.
+Database records and uploads are stored in Supabase. Existing local records are not migrated automatically. Keep `.env` private.
 
 ## First-time setup
 
@@ -69,17 +71,18 @@ The approved academic defaults are A ≥70, B ≥60, C ≥50, D ≥45, E ≥40 a
 
 SMPIS uses individual accounts, server-enforced role and school access, hashed passwords, HttpOnly session cookies, CSRF protection, audit events and required MFA for the initial Super Admin. Keep school records, uploaded documents, database files, backups and environment secrets private. Student records may contain medical and other sensitive information.
 
-Application-level encryption for sensitive database fields is not implemented. For production, configure appropriate encryption at rest and in transit, restrict server and backup access, and review the school's data-retention and recovery policies before importing real records.
+Integration credentials use AES-256-GCM encryption with a server-held key. Other sensitive database fields do not use application-level encryption. For production, configure appropriate encryption at rest and in transit, restrict server and backup access, and review the school's data-retention and recovery policies before importing real records.
 
 ## Configuration
 
-Copy `.env.example` to `.env` only when you need to override defaults. Restart the server after changing environment variables.
+Configure the required variables in `.env` or your hosting environment. Restart the server after changing environment variables.
 
 | Variable | Purpose |
 | --- | --- |
 | `PORT`, `HOST` | Local server address; defaults to port `3000` on `127.0.0.1`. |
-| `DATA_DIR` | Persistent local database, upload and backup directory. |
-| `DATABASE_URL` | Optional PostgreSQL connection. Without it, SMPIS uses local PGlite. |
+| `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_STORAGE_BUCKET` | Required project API and private document storage. |
+| `INTEGRATION_ENCRYPTION_KEY` | Required 64-character hex key for encrypted integration settings. Generate once; keep the same key on every server and after restores. |
+| `DATABASE_URL` | Required Supabase PostgreSQL connection with SSL. |
 | `REQUIRE_MFA` | Administrator MFA is required by default. Set to `false` only for local evaluation. |
 | `SMTP_URL`, `MAIL_FROM`, `APP_URL` | Transactional email and password-reset links. Without SMTP, notifications remain queued. |
 | `FEE_REMINDER_DAYS` | Comma-separated overdue reminder intervals; defaults to `7,14,30`. |
@@ -90,15 +93,19 @@ Never commit real database credentials, mail credentials or payment keys. Keep s
 
 ## Database and external services
 
-The default database is persistent **PGlite**, an embedded PostgreSQL-compatible database suitable for local, single-process use. SMPIS also includes a PostgreSQL server adapter and applies its schema at startup when `DATABASE_URL` is set.
+The application connects directly to Supabase PostgreSQL using the server SQL adapter. Supabase Storage holds private documents. Setup enables RLS and removes browser-role table grants; the existing SMPIS authentication, MFA and school permissions control access through the API.
 
-For a hosted database, **Supabase PostgreSQL is the recommended option** because SMPIS uses relational tables, SQL queries, constraints and transactions. Firebase Firestore is not a drop-in replacement; it uses a document data model and would require a substantial data-layer redesign. Supabase is not configured here. Validate its connection and SSL settings before using school data. Switching from PGlite does not migrate existing records automatically.
+Under **Administration ? Integrations**, super admins can enable, disable, replace or remove school credentials. Blank secret inputs keep the saved value. Responses and audit logs never include saved secrets. SMTP settings apply to password reset emails and queued notifications; Paystack settings apply to checkout, verification and webhooks. Environment SMTP and per-school Paystack settings remain compatibility defaults only until that school saves its own settings. No global payment key is shared across schools.
+
+Flutterwave and Twilio credentials are configurable, but do not activate a checkout or SMS workflow. Use `APP_URL` for email reset links and payment callbacks. Changing the encryption key without re-encrypting credentials makes saved settings unreadable.
 
 Paystack checkout and webhook handling are implemented and tested with a fake provider. No live transaction has been made. Payment keys and webhook configuration are required; unsafe or mismatched captures need manual reconciliation, and automated refunds are not implemented.
 
 ## Deploy to Vercel
 
-The Vercel entry point and daily protected job are configured in this repository. Vercel requires Supabase PostgreSQL and private Supabase Storage because serverless files are temporary. Configure project secrets in Vercel, then validate a Preview deployment before using school data. Follow the [Vercel deployment guide](docs/VERCEL-DEPLOYMENT.md) for the exact setup and verification steps.
+The Vercel entry point and daily protected job are configured in this repository. Vercel uses Supabase PostgreSQL and private Supabase Storage. Copy `.env.supabase.example` to your private `.env`, fill in your project credentials, then run `npm.cmd run supabase:setup` and `npm.cmd run supabase:check`. These commands initialize the application tables, restrict Supabase public API access, create a private document bucket, and verify storage operations. The existing SMPIS login, MFA and role permissions continue to handle user access.
+
+Add the same server environment variables in Vercel and import this repository using the **Express** preset. The build command and static output are configured in `vercel.json`. Validate a Preview deployment before using school data. Follow the [Vercel deployment guide](docs/VERCEL-DEPLOYMENT.md) for exact setup steps. Document uploads are limited to 4 MB to fit Vercel's function payload limit.
 
 Email delivery requires a working SMTP provider and verified sender. SMS, WhatsApp, biometric devices, accounting integrations and native mobile apps are not implemented. The web interface is responsive on desktop and mobile browsers.
 
@@ -110,21 +117,7 @@ Use pseudonymous entity keys and observed outcomes only. Do not import student n
 
 ## Backups and restore
 
-The running server creates local database and document backups daily. Local backups are not off-site protection; configure encrypted external copies and test recovery before relying on them.
-
-To create a manual backup while the application is stopped:
-
-```powershell
-npm.cmd run backup
-```
-
-Restore a PGlite backup to a **new, empty directory**:
-
-```powershell
-node scripts/restore.js backups/CHOSEN-TIMESTAMP data-restored
-```
-
-Then set `DATA_DIR=./data-restored` in `.env` and start SMPIS. Existing data is not overwritten by the restore tool. PGlite snapshots are not native PostgreSQL backups. For a PostgreSQL server, the backup path requires `pg_dump`; restore with `pg_restore` into a fresh database. External PostgreSQL backup and restore need deployment validation.
+The running server relies on Supabase for durable data; it no longer creates local daily snapshots. Configure database recovery and document backup separately in your Supabase project. The optional `npm run backup` command exports a database dump using `pg_dump`; it does not export Supabase Storage objects. Preserve the integration encryption key with your recovery materials. The legacy PGlite restore script is for recovering historical exports only; its output cannot serve as the application backend.
 
 ## Verification
 

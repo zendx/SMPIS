@@ -616,7 +616,7 @@ export function Students({ can, user, notify, go }) {
               {(can("students.write") || can("children.write")) && (
                 <label className="upload-box">
                   <Upload size={20} />
-                  <span>Upload PDF, PNG or JPEG · up to 5 MB</span>
+                  <span>Upload PDF, PNG or JPEG · up to 4 MB</span>
                   <input
                     type="file"
                     accept=".pdf,.png,.jpg,.jpeg"

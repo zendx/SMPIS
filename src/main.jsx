@@ -390,7 +390,7 @@ function App() {
     ['people','People & HR',Users,can('operations.staff')],
     ['facilities','Facilities & assets',School,can('operations.staff')],
     ["intelligence", "Intelligence", ArrowUpRight, can("intelligence.read")],
-    ["platform", "Schools", School, can("*")],
+    ["platform", "Schools", School, !!session?.user.platform_operator],
     [
       "alerts",
       "Alerts",
@@ -495,7 +495,7 @@ function App() {
       session &&
       !session.mfa_required &&
       !nav.some((n) => n[0] === page) &&
-      page !== "notifications"
+      (page !== "notifications" || session.user.mfa_setup_required)
     )
       go(nav[0]?.[0] || "administration");
   }, [session, page]);
@@ -567,6 +567,12 @@ function App() {
       </div>
     );
   if (!config) return <Loading />;
+  // Wait for the route redirect before mounting a page that this account cannot use.
+  if (
+    !nav.some((n) => n[0] === page) &&
+    (page !== "notifications" || session.user.mfa_setup_required)
+  )
+    return <Loading />;
   const context = {
     user: session.user,
     config,

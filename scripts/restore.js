@@ -40,5 +40,5 @@ try {
   if (e.code !== "ENOENT") throw e;
 }
 console.log(
-  `Restored to ${destination}. Set DATA_DIR to this directory before starting SMPIS.`,
+  `Legacy backup restored to ${destination}. SMPIS requires Supabase; migrate recovered records separately before using them.`,
 );

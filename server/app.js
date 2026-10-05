@@ -1,3 +1,4 @@
+import { integrationRoutes } from "./integrations.js";
 import express from "express";
 import cookieParser from "cookie-parser";
 import helmet from "helmet";
@@ -11,15 +12,16 @@ import { paymentRoutes, paystackWebhook } from "./paystack.js";
 import { intelligenceRoutes } from "./intelligence.js";
 import { refinementRoutes } from "./refinement-routes.js";
 import { modelRoutes } from "./model-routes.js";
-import { createDocumentStorage } from "./document-storage.js";
+import { createDocumentStorage, createMemoryDocumentStorage } from "./document-storage.js";
 import { runJobs } from "./jobs.js";
+import { DOCUMENT_MAX_MB } from "./document-limits.js";
 
 export async function createApp(db, options = {}) {
   await seedRoles(db);
   options = {
     ...options,
     documentStorage:
-      options.documentStorage || createDocumentStorage(options),
+      options.documentStorage || (db.isTestDatabase ? createMemoryDocumentStorage() : createDocumentStorage()),
   };
   const app = express();
   const proxyHops=Number(process.env.TRUST_PROXY_HOPS||0);
@@ -90,6 +92,7 @@ export async function createApp(db, options = {}) {
     authenticate(db),
     accountRoutes(db),
     coreRoutes(db, options),
+    integrationRoutes(db),
     academicRoutes(db),
     operationsRoutes(db),
     refinementRoutes(db, options),
@@ -136,7 +139,7 @@ export async function createApp(db, options = {}) {
         errors: [
           {
             code: "VALIDATION_ERROR",
-            message: "Document size must not exceed 5 MB.",
+            message: `Document size must not exceed ${DOCUMENT_MAX_MB} MB.`,
           },
         ],
       });

@@ -389,7 +389,7 @@ export function StaffDocuments({ staff, onClose, notify }) {
     [busy, setBusy] = useState(false);
   return (
     <Modal title={`Private HR documents · ${person(staff)}`} onClose={onClose}>
-      <p>HR access only. PDF, PNG or JPEG, up to 5 MB each.</p>
+      <p>HR access only. PDF, PNG or JPEG, up to 4 MB each.</p>
       {(error || q.error) && <p className="form-error">{error || q.error}</p>}
       <Table
         rows={q.data}

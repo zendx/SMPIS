@@ -66,7 +66,7 @@ export async function backupDatabase(
       { env, windowsHide: true },
     );
   }
-  try {
+  if (typeof db.dumpDataDir === "function") try {
     await cp(path.resolve(dataDir, "documents"), path.join(out, "documents"), {
       recursive: true,
     });
@@ -79,7 +79,7 @@ export async function backupDatabase(
       {
         created_at: new Date().toISOString(),
         engine: typeof db.dumpDataDir === "function" ? "pglite" : "postgresql",
-        documents: "documents",
+        documents: typeof db.dumpDataDir === "function" ? "documents" : "Supabase Storage objects are not included",
       },
       null,
       2,

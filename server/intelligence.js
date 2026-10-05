@@ -1,3 +1,4 @@
+import { smtpConfig } from "./integrations.js";
 import express from "express";
 import { one, rows, insert, audit } from "./db.js";
 import { z, id, text, email, password, date } from "./validation.js";
@@ -198,13 +199,13 @@ export function intelligenceRoutes(db) {
         data: {
           app_url: process.env.APP_URL || null,
           https: process.env.APP_URL?.startsWith("https://") || false,
-          email_configured: !!(process.env.SMTP_URL && process.env.MAIL_FROM),
+          email_configured: !!(await smtpConfig(db, req.user.school_id)),
           postgresql_configured: !!process.env.DATABASE_URL,
           secure_cookies: process.env.NODE_ENV === "production",
           backup_storage:
-            "Local backup directory; offsite copies require operator configuration",
+            "Supabase database and private document storage",
           deployment:
-            "Prepared for Hostinger; no hosting connection or DNS change has been made",
+            "Supabase backend",
         },
       }),
   );

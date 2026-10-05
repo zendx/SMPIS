@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { chromium } from "@playwright/test";
 import express from "express";
 import assert from "node:assert/strict";
@@ -8,6 +9,7 @@ import { createApp } from "../server/app.js";
 import { localClock } from "../server/security.js";
 import * as OTPAuth from "otpauth";
 process.env.REQUIRE_MFA = "true";
+process.env.INTEGRATION_ENCRYPTION_KEY = randomBytes(32).toString("hex");
 const db = await openDatabase({ memory: true }),
   app = await createApp(db, { dataDir: "test-results/uploads" });
 app.use(express.static("dist"));
@@ -57,6 +59,15 @@ try {
     .getByText("Complete this step to unlock the rest of SMPIS.")
     .waitFor();
   assert.equal(await page.locator("nav button").count(), 1);
+  const notificationRequests = [];
+  const recordNotificationRequest = (request) => {
+    if (request.url().includes("/api/v1/notifications")) notificationRequests.push(request.url());
+  };
+  page.on("request", recordNotificationRequest);
+  await page.evaluate(() => { location.hash = "notifications"; });
+  await page.waitForFunction(() => location.hash === "#administration");
+  assert.deepEqual(notificationRequests, []);
+  page.off("request", recordNotificationRequest);
   await save("Set up authenticator");
   await page
     .getByRole("img", { name: "Authenticator setup QR code" })
@@ -203,6 +214,20 @@ try {
       `Unexpected error on ${label}`,
     );
   }
+  await save("Integrations");
+  await page.getByRole("heading", { name: "SMTP email", exact: true }).waitFor();
+  const paystackPanel = page.locator("section.panel").filter({ has: page.getByRole("heading", { name: "Paystack", exact: true }) });
+  await paystackPanel.getByLabel("Enable this integration").check();
+  await paystackPanel.getByLabel("Public key").fill("pk_test_browser");
+  await paystackPanel.getByLabel("Secret key", { exact: true }).fill("sk_test_browser_private");
+  const integrationSaved = page.waitForResponse(r => r.url().endsWith("/admin/integrations/paystack") && r.request().method() === "PATCH");
+  await paystackPanel.getByRole("button", { name: "Save", exact: true }).click();
+  assert.equal((await integrationSaved).status(), 200);
+  await paystackPanel.getByText("Saved securely. Leave blank to keep the current value.").waitFor();
+  assert.equal(await paystackPanel.getByLabel("Secret key", { exact: true }).inputValue(), "");
+  await page.screenshot({ path: "test-results/administration-integrations.png", fullPage: true });
+  await paystackPanel.getByRole("button", { name: "Remove credentials and disable" }).click();
+  await paystackPanel.getByText("No credential saved.").waitFor();
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByRole("button", { name: "Open navigation" }).click();
   await navigate("Overview");
@@ -223,7 +248,7 @@ try {
   await page.getByRole("heading", { name: "Welcome back" }).waitFor();
   assert.deepEqual(errors, []);
   console.log(
-    "Browser workflow passed: setup, login, class, admissions, fees, invoice, payment, enrollment, profile/upload, attendance, staff check-in, export, all navigation, mobile, logout.",
+    "Browser workflow passed: setup, login, class, admissions, fees, invoice, payment, enrollment, profile/upload, attendance, staff check-in, export, all navigation, integration credential save/removal, mobile, logout.",
   );
 } catch (error) {
   await page.screenshot({

@@ -1,3 +1,4 @@
+import { smtpConfig } from "./integrations.js";
 import express from "express";
 import { rateLimit } from "express-rate-limit";
 import * as OTPAuth from "otpauth";
@@ -238,7 +239,7 @@ export function authRoutes(db) {
   });
   r.post("/password-reset/request", async (req, res) => {
     const b = z.object({ email }).parse(req.body);
-    if (!process.env.SMTP_URL || !process.env.APP_URL)
+    if (!process.env.APP_URL)
       fail(
         503,
         "Password reset email is not configured. Contact your school administrator.",
@@ -249,6 +250,8 @@ export function authRoutes(db) {
       [b.email, "ACTIVE"],
     );
     if (u) {
+      const smtp = await smtpConfig(db, u.school_id);
+      if (!smtp) fail(503, "Password reset email is not configured. Contact your school administrator.");
       const raw = token();
       await db.query("DELETE FROM reset_tokens WHERE user_id=$1", [u.id]);
       await insert(db, "reset_tokens", {
@@ -256,8 +259,8 @@ export function authRoutes(db) {
         user_id: u.id,
         expires_at: new Date(Date.now() + 30 * 60 * 1000),
       });
-      await nodemailer.createTransport(process.env.SMTP_URL).sendMail({
-        from: process.env.MAIL_FROM,
+      await nodemailer.createTransport(smtp.transport).sendMail({
+        from: smtp.from,
         to: u.email,
         subject: "Reset your SMPIS password",
         text: `Open ${process.env.APP_URL}/?reset=${raw} to reset your password. This link expires in 30 minutes.`,

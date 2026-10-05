@@ -1,9 +1,10 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "outputDirectory": "public",
+  "buildCommand": "npm run build:vercel",
   "functions": {
     "index.js": {
-      "includeFiles": "public/index.html"
+      "includeFiles": "{public/index.html,server/*.sql}"
     }
   },
   "crons": [

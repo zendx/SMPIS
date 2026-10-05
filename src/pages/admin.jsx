@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
-import { IntegrationReadiness } from "./intelligence";
+import { IntegrationSettings } from "./integrations";
 import {
   Plus,
   Download,
@@ -281,7 +281,7 @@ export function Administration({
           </button>
         ))}
       </div>
-      {tab === "integrations" && <IntegrationReadiness />}
+      {tab === "integrations" && user.role === "SUPER_ADMIN" && <IntegrationSettings notify={notify} />}
       {tab === "school" && (
         <Panel
           title="School settings"
