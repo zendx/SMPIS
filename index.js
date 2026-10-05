@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { openDatabase } from "./server/db.js";
 import { createApp } from "./server/app.js";
 import { supabaseConfiguration } from "./server/supabase.js";
+import { serveFrontend } from "./server/frontend.js";
 
 supabaseConfiguration();
 
@@ -14,7 +15,6 @@ const db = await openDatabase({
 });
 const app = express();
 app.use(await createApp(db, { production: true }));
-const indexPath = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "public", "index.html");
-app.get("/{*path}", (req, res) => res.sendFile(indexPath));
+serveFrontend(app, path.resolve(path.dirname(fileURLToPath(import.meta.url)), "public"));
 
 export default app;

@@ -68,6 +68,10 @@ Push the repository, import it into Vercel, add the variables, and deploy. When 
 
 The daily job runs at 02:00 UTC using `vercel.json`. Supabase database recovery and storage backups are separate from application deployment. Flutterwave checkout and Twilio SMS are not yet implemented.
 
-If a deployment reports that `functions.index.js` does not match functions in the `api` directory, it is using the generic functions configuration. This project uses native Express detection: keep `framework: "express"` in `vercel.json` and do not add an `index.js` entry under `functions`.
+If a deployment reports that `functions.index.js` does not match functions in the `api` directory, it is using the generic functions configuration. This project uses native Express detection: keep `framework: "express"` in `vercel.json` and use the wildcard function pattern already in the configuration.
 
 If Vercel reports no entrypoint in `public`, its backend output directory is pointing at the frontend assets. Keep `outputDirectory: "."` in `vercel.json`, and reset any dashboard Output Directory override to `.` or disable that override. The build command continues to generate `public/index.html` and assets.
+
+## Frontend assets
+
+The function bundle explicitly includes `public/**`. JavaScript and CSS requests have dedicated file routes before the SPA fallback, so they receive their correct content type if they reach Express. Missing assets return 404 instead of HTML. The wildcard `functions` pattern applies the bundle inclusion to the detected Express function without relying on its generated entry-point name.
