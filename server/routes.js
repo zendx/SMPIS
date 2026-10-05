@@ -34,16 +34,14 @@ import {
   studentScope,
   generateInvoice,
   recordPayment,
+  createPaymentPlan,
   advanceApplication,
   enroll,
   refreshAlerts,
   invoiceList,
 } from "./services.js";
 
-export function coreRoutes(
-  db,
-  { dataDir = "./data", documentStorage } = {},
-) {
+export function coreRoutes(db, { dataDir = "./data", documentStorage } = {}) {
   const r = express.Router(),
     allow =
       (...permissions) =>
@@ -521,7 +519,11 @@ export function coreRoutes(
     async (req, res) => {
       const s = await studentAccess(db, req.user, id.parse(req.params.id)),
         f = req.file;
-      if (!f) fail(422, `Choose a PDF, PNG or JPEG file (up to ${DOCUMENT_MAX_MB} MB).`);
+      if (!f)
+        fail(
+          422,
+          `Choose a PDF, PNG or JPEG file (up to ${DOCUMENT_MAX_MB} MB).`,
+        );
       const sig = f.buffer.subarray(0, 8),
         mime =
           sig.subarray(0, 5).toString() === "%PDF-"
@@ -1094,31 +1096,11 @@ export function coreRoutes(
             note: optionalText,
           })
           .parse(req.body);
-      const i = await schoolRecord(db, req.user, "student_invoices", iid),
-        amount = cents(b.amount);
-      const plans = await one(
-        db,
-        "SELECT coalesce(sum(amount_cents),0) AS total FROM payment_plans WHERE school_id=$1 AND invoice_id=$2",
-        [req.user.school_id, iid],
-      );
-      if (
-        amount <= 0 ||
-        amount + Number(plans.total) >
-          Number(i.total_cents) - Number(i.paid_cents) ||
-        i.waived
-      )
-        fail(
-          422,
-          "Planned installments cannot exceed the current outstanding balance.",
-        );
-      const p = await insert(db, "payment_plans", {
-        school_id: req.user.school_id,
-        invoice_id: iid,
+      const p = await createPaymentPlan(db, req.user, iid, {
         due_date: b.due_date,
-        amount_cents: amount,
+        amount_cents: cents(b.amount),
         note: b.note,
       });
-      await audit(db, req.user, "payment_plans", p.id, "CREATE", null, p);
       ok(res, p);
     },
   );

@@ -1,6 +1,7 @@
 import { smtpConfig } from "./integrations.js";
 import express from "express";
 import { rateLimit } from "express-rate-limit";
+import { PostgresRateLimitStore } from "./rate-limit-store.js";
 import * as OTPAuth from "otpauth";
 import nodemailer from "nodemailer";
 import { one, rows, insert, audit } from "./db.js";
@@ -56,12 +57,31 @@ function totp(secret, label) {
     secret: OTPAuth.Secret.fromBase32(secret),
   });
 }
-export function authRoutes(db) {
+export function authRoutes(
+  db,
+  { production = process.env.NODE_ENV === "production" } = {},
+) {
   const r = express.Router();
   r.use(
     rateLimit({
       windowMs: 15 * 60 * 1000,
       limit: 80,
+      store: new PostgresRateLimitStore(db, "auth-ip"),
+      standardHeaders: "draft-8",
+      legacyHeaders: false,
+    }),
+  );
+  r.use(
+    ["/login", "/password-reset/request"],
+    rateLimit({
+      windowMs: 15 * 60 * 1000,
+      limit: 30,
+      store: new PostgresRateLimitStore(db, "auth-account"),
+      keyGenerator: (req) =>
+        String(req.body?.email || "")
+          .trim()
+          .toLowerCase()
+          .slice(0, 320),
       standardHeaders: "draft-8",
       legacyHeaders: false,
     }),
@@ -228,7 +248,7 @@ export function authRoutes(db) {
     res.cookie("smpis_session", raw, {
       httpOnly: true,
       sameSite: "strict",
-      secure: process.env.NODE_ENV === "production",
+      secure: production,
       maxAge: 8 * 60 * 60 * 1000,
       path: "/",
     });
@@ -249,22 +269,29 @@ export function authRoutes(db) {
       "SELECT * FROM users WHERE email=$1 AND status=$2",
       [b.email, "ACTIVE"],
     );
-    if (u) {
-      const smtp = await smtpConfig(db, u.school_id);
-      if (!smtp) fail(503, "Password reset email is not configured. Contact your school administrator.");
-      const raw = token();
-      await db.query("DELETE FROM reset_tokens WHERE user_id=$1", [u.id]);
-      await insert(db, "reset_tokens", {
-        token_hash: digest(raw),
-        user_id: u.id,
-        expires_at: new Date(Date.now() + 30 * 60 * 1000),
-      });
-      await nodemailer.createTransport(smtp.transport).sendMail({
-        from: smtp.from,
-        to: u.email,
-        subject: "Reset your SMPIS password",
-        text: `Open ${process.env.APP_URL}/?reset=${raw} to reset your password. This link expires in 30 minutes.`,
-      });
+    try {
+      if (u) {
+        const smtp = await smtpConfig(db, u.school_id);
+        if (smtp) {
+          const raw = token();
+          await db.query("DELETE FROM reset_tokens WHERE user_id=$1", [u.id]);
+          await insert(db, "reset_tokens", {
+            token_hash: digest(raw),
+            user_id: u.id,
+            expires_at: new Date(Date.now() + 30 * 60 * 1000),
+          });
+          await nodemailer.createTransport(smtp.transport).sendMail({
+            from: smtp.from,
+            to: u.email,
+            subject: "Reset your SMPIS password",
+            text: `Open ${process.env.APP_URL}/?reset=${raw} to reset your password. This link expires in 30 minutes.`,
+          });
+        }
+      }
+    } catch {
+      console.error(
+        "Password reset delivery failed; check the school email configuration.",
+      );
     }
     res.json({
       data: { message: "If this account exists, a reset link has been sent." },
@@ -351,6 +378,18 @@ export function accountRoutes(db) {
     rateLimit({
       windowMs: 15 * 60 * 1000,
       limit: 30,
+      store: new PostgresRateLimitStore(db, "mfa-ip"),
+      standardHeaders: "draft-8",
+      legacyHeaders: false,
+    }),
+  );
+  r.use(
+    "/auth/mfa",
+    rateLimit({
+      windowMs: 15 * 60 * 1000,
+      limit: 30,
+      store: new PostgresRateLimitStore(db, "mfa-account"),
+      keyGenerator: (req) => String(req.user.id),
       standardHeaders: "draft-8",
       legacyHeaders: false,
     }),

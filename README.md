@@ -42,6 +42,10 @@ npm run test:ui
 
 Browser tests use `dist`; run `npm run build` before `npm run test:ui`. Keep `.env`, school data, backups, and the encryption key private. Database recovery and document backups must be configured separately in Supabase.
 
+Authentication rate limits are shared through PostgreSQL and apply by IP and account. Production mode (`npm start`, `NODE_ENV=production`, or Vercel) enables Secure session cookies and requires HTTPS for browser login. Run `npm run supabase:setup` before deploying these changes to create the rate-limit table and notification claim columns.
+
+Email workers claim each notification for five minutes before sending; overlapping workers cannot claim the same active message, and expired claims can be retried. SMTP cannot guarantee exactly-once delivery if a worker stops after the provider accepts a message but before its sent status is saved. Password reset requests return the same public response for unknown accounts, missing school SMTP settings, and delivery failures; delivery failures are logged on the server.
+
 ## Legal pages and cookies
 
 Terms, Privacy, and Cookies are public at `/terms`, `/privacy`, and `/cookies`. Super admins publish the operator name and privacy email in Administration > Site settings. The notice inventories the actual application cookies: `smpis_session` (8-hour, HttpOnly login session) and `smpis_cookie_preferences` (365-day notice preference, created on acceptance). No application analytics or advertising cookies are configured. The notice can be dismissed without saving a preference.

@@ -170,6 +170,38 @@ export async function recordPayment(db, u, b) {
     return payment;
   });
 }
+export async function createPaymentPlan(db, u, invoiceId, b) {
+  return db.transaction(async (tx) => {
+    const invoice = await one(
+      tx,
+      "SELECT * FROM student_invoices WHERE school_id=$1 AND id=$2 FOR UPDATE",
+      [u.school_id, invoiceId],
+    );
+    if (!invoice) fail(404, "Invoice not found.");
+    const plans = await one(
+      tx,
+      "SELECT coalesce(sum(amount_cents),0) AS total FROM payment_plans WHERE school_id=$1 AND invoice_id=$2",
+      [u.school_id, invoiceId],
+    );
+    if (
+      b.amount_cents <= 0 ||
+      invoice.waived ||
+      b.amount_cents + Number(plans.total) >
+        Number(invoice.total_cents) - Number(invoice.paid_cents)
+    )
+      fail(
+        422,
+        "Planned installments cannot exceed the current outstanding balance.",
+      );
+    const plan = await insert(tx, "payment_plans", {
+      school_id: u.school_id,
+      invoice_id: invoiceId,
+      ...b,
+    });
+    await audit(tx, u, "payment_plans", plan.id, "CREATE", null, plan);
+    return plan;
+  });
+}
 export const stages = [
   "SUBMITTED",
   "REVIEWED",

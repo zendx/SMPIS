@@ -21,6 +21,10 @@ CREATE TABLE IF NOT EXISTS sessions (
 CREATE TABLE IF NOT EXISTS reset_tokens (
  token_hash TEXT PRIMARY KEY,user_id INT NOT NULL REFERENCES users(id),expires_at TIMESTAMPTZ NOT NULL
 );
+CREATE TABLE IF NOT EXISTS auth_rate_limits (
+ key TEXT PRIMARY KEY,hits INT NOT NULL,reset_at TIMESTAMPTZ NOT NULL
+);
+CREATE INDEX IF NOT EXISTS auth_rate_limit_expiry ON auth_rate_limits(reset_at);
 CREATE TABLE IF NOT EXISTS academic_years (
  id SERIAL PRIMARY KEY,school_id INT NOT NULL REFERENCES schools(id),name TEXT NOT NULL,
  start_date DATE NOT NULL,end_date DATE NOT NULL,CHECK(end_date>start_date),UNIQUE(school_id,id),UNIQUE(school_id,name)
@@ -143,6 +147,8 @@ CREATE TABLE IF NOT EXISTS notifications (
  UNIQUE(school_id,dedupe_key),FOREIGN KEY(school_id,user_id) REFERENCES users(school_id,id)
 );
 CREATE INDEX IF NOT EXISTS student_class ON students(school_id,class_id);
+ALTER TABLE notifications ADD COLUMN IF NOT EXISTS claim_token TEXT;
+ALTER TABLE notifications ADD COLUMN IF NOT EXISTS claimed_until TIMESTAMPTZ;
 CREATE INDEX IF NOT EXISTS attendance_date ON student_attendance(school_id,attendance_date);
 CREATE INDEX IF NOT EXISTS staff_attendance_date ON staff_attendance(school_id,attendance_date);
 CREATE INDEX IF NOT EXISTS invoice_school ON student_invoices(school_id,term_id);

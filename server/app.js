@@ -24,6 +24,11 @@ export async function createApp(db, options = {}) {
   await seedRoles(db);
   options = {
     ...options,
+    production: Boolean(
+      options.production ||
+      process.env.NODE_ENV === "production" ||
+      process.env.VERCEL,
+    ),
     documentStorage:
       options.documentStorage ||
       (db.isTestDatabase
@@ -95,7 +100,7 @@ export async function createApp(db, options = {}) {
     }
   });
   app.use("/api/v1", legalRoutes(db));
-  app.use("/api/v1/auth", authRoutes(db));
+  app.use("/api/v1/auth", authRoutes(db, options));
   app.use(
     "/api/v1",
     authenticate(db),

@@ -1,10 +1,11 @@
 import { smtpConfig } from "./integrations.js";
 import nodemailer from "nodemailer";
-import { rows } from "./db.js";
+import { rows, one } from "./db.js";
 import { refreshAlerts } from "./services.js";
-import { localClock } from "./security.js";
+import { localClock, token } from "./security.js";
 import { refreshOperationAlerts } from "./operations-service.js";
 export async function runJobs(db) {
+  await db.query("DELETE FROM auth_rate_limits WHERE reset_at<now()");
   for (const school of await rows(db, "SELECT * FROM schools")) {
     await refreshAlerts(db, school.id);
     await refreshOperationAlerts(db, school.id);
@@ -55,27 +56,56 @@ export async function runJobs(db) {
         );
     }
   }
-  for (const n of await rows(
+  await deliverNotifications(db);
+}
+
+export async function deliverNotifications(
+  db,
+  {
+    configuration = smtpConfig,
+    send = async (smtp, n) =>
+      nodemailer
+        .createTransport({
+          ...(typeof smtp.transport === "string"
+            ? { url: smtp.transport }
+            : smtp.transport),
+          connectionTimeout: 15000,
+          greetingTimeout: 15000,
+          socketTimeout: 45000,
+        })
+        .sendMail({
+          from: smtp.from,
+          to: n.email,
+          subject: n.title,
+          text: n.body,
+        }),
+  } = {},
+) {
+  for (const candidate of await rows(
     db,
-    "SELECT * FROM notifications WHERE delivery_status='PENDING' AND attempts<5 AND email<>'' ORDER BY created_at LIMIT 50",
+    "SELECT * FROM notifications WHERE delivery_status='PENDING' AND attempts<5 AND email<>'' AND (claimed_until IS NULL OR claimed_until<=now()) ORDER BY created_at LIMIT 50",
   )) {
-    const smtp = await smtpConfig(db, n.school_id);
+    const smtp = await configuration(db, candidate.school_id);
     if (!smtp) continue;
+    const claim = token();
+    const n = await one(
+      db,
+      `UPDATE notifications SET claim_token=$2,claimed_until=now()+interval '5 minutes'
+       WHERE id=$1 AND delivery_status='PENDING' AND attempts<5
+         AND (claimed_until IS NULL OR claimed_until<=now()) RETURNING *`,
+      [candidate.id, claim],
+    );
+    if (!n) continue;
     try {
-      await nodemailer.createTransport(smtp.transport).sendMail({
-        from: smtp.from,
-        to: n.email,
-        subject: n.title,
-        text: n.body,
-      });
+      await send(smtp, n);
       await db.query(
-        "UPDATE notifications SET delivery_status='SENT',sent_at=now() WHERE id=$1",
-        [n.id],
+        "UPDATE notifications SET delivery_status='SENT',sent_at=now(),claim_token=NULL,claimed_until=NULL WHERE id=$1 AND claim_token=$2",
+        [n.id, claim],
       );
     } catch {
       await db.query(
-        "UPDATE notifications SET attempts=attempts+1,delivery_status=CASE WHEN attempts>=4 THEN 'FAILED' ELSE 'PENDING' END WHERE id=$1",
-        [n.id],
+        "UPDATE notifications SET attempts=attempts+1,delivery_status=CASE WHEN attempts>=4 THEN 'FAILED' ELSE 'PENDING' END,claim_token=NULL,claimed_until=NULL WHERE id=$1 AND claim_token=$2",
+        [n.id, claim],
       );
     }
   }

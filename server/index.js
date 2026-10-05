@@ -5,7 +5,9 @@ import path from "node:path";
 import { openDatabase } from "./db.js";
 import { createApp } from "./app.js";
 import { runJobs } from "./jobs.js";
-const production = process.argv.includes("--production");
+const production =
+  process.argv.includes("--production") ||
+  process.env.NODE_ENV === "production";
 const db = await openDatabase();
 let app;
 try {
