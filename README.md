@@ -48,6 +48,8 @@ Email workers claim each notification for five minutes before sending; overlappi
 
 ## Legal pages and cookies
 
+Public HTML includes a meta description, canonical link, Open Graph metadata, JSON-LD and a visible heading before JavaScript loads. Set `APP_URL` to the public HTTPS site origin before building and deploying so canonical links identify the correct site. Vercel can also use `VERCEL_PROJECT_PRODUCTION_URL` when `APP_URL` is unset. Rebuild after changing this URL: the static homepage metadata is generated during the Vite build. Policy pages receive their own metadata from Express.
+
 Terms, Privacy, and Cookies are public at `/terms`, `/privacy`, and `/cookies`. Super admins publish the operator name and privacy email in Administration > Site settings. The notice inventories the actual application cookies: `smpis_session` (8-hour, HttpOnly login session) and `smpis_cookie_preferences` (365-day notice preference, created on acceptance). No application analytics or advertising cookies are configured. The notice can be dismissed without saving a preference.
 
 ## Local database selection
