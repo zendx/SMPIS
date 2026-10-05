@@ -1,3 +1,0 @@
-# SMPIS is served by Node.js. Never expose source, database files or private
-# documents through the surrounding XAMPP Apache document root.
-Require all denied
