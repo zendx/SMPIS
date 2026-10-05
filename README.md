@@ -6,7 +6,7 @@ School Management, Performance and Intelligence System built with React, Express
 
 1. Push this repository to GitHub and import it into Vercel using the **Express** framework preset and the repository root.
 2. Add the environment variables listed in [the deployment guide](docs/VERCEL-DEPLOYMENT.md). Keep the same `INTEGRATION_ENCRYPTION_KEY` as your local `.env`.
-3. Build with `npm run build:vercel`; output is `public`. These settings are already in `vercel.json`.
+3. Build with `npm run build:vercel`; frontend assets are built into `public`. Vercel searches the project root (`outputDirectory: "."`) for the Express entry point. These settings are already in `vercel.json`.
 4. Deploy, check `/healthz`, and verify login, MFA, and document upload/download.
 
 Before deploying schema changes, run locally with your private Supabase configuration:

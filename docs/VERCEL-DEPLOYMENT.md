@@ -7,7 +7,7 @@ The root `index.js` exports the Express application. Vite builds the frontend in
 - Framework preset: **Express** (also enforced by `vercel.json`)
 - Root directory: repository root
 - Build command: `npm run build:vercel`
-- Output directory: `public`
+- Output directory: `.` (the project root containing the Express `index.js`; frontend assets are still built into `public`)
 - Install command: default (`npm install`)
 
 See [Vercel's Express deployment documentation](https://vercel.com/docs/frameworks/backend/express).
@@ -69,3 +69,5 @@ Push the repository, import it into Vercel, add the variables, and deploy. When 
 The daily job runs at 02:00 UTC using `vercel.json`. Supabase database recovery and storage backups are separate from application deployment. Flutterwave checkout and Twilio SMS are not yet implemented.
 
 If a deployment reports that `functions.index.js` does not match functions in the `api` directory, it is using the generic functions configuration. This project uses native Express detection: keep `framework: "express"` in `vercel.json` and do not add an `index.js` entry under `functions`.
+
+If Vercel reports no entrypoint in `public`, its backend output directory is pointing at the frontend assets. Keep `outputDirectory: "."` in `vercel.json`, and reset any dashboard Output Directory override to `.` or disable that override. The build command continues to generate `public/index.html` and assets.
