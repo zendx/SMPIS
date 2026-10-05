@@ -1,10 +1,10 @@
 import "dotenv/config";
-import express from "express";
 import { createServer as createHttpServer } from "node:http";
 import path from "node:path";
 import { openDatabase } from "./db.js";
 import { createApp } from "./app.js";
 import { runJobs } from "./jobs.js";
+import { serveFrontend } from "./frontend.js";
 const production =
   process.argv.includes("--production") ||
   process.env.NODE_ENV === "production";
@@ -36,10 +36,7 @@ try {
 let vite;
 try {
   if (production) {
-    app.use(express.static("dist"));
-    app.get("/{*path}", (req, res) =>
-      res.sendFile(path.resolve("dist/index.html")),
-    );
+    serveFrontend(app, path.resolve("dist"));
   } else {
     const { createServer } = await import("vite");
     vite = await createServer({
